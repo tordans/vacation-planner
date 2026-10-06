@@ -1,0 +1,51 @@
+@import '@fontsource-variable/inter';
+@import 'tailwindcss';
+@plugin '@tailwindcss/forms';
+
+@theme {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-sans--font-feature-settings: 'cv11';
+}
+
+@custom-variant fine-pointer {
+  @media (hover: hover) and (pointer: fine) {
+    @slot;
+  }
+}
+
+/* Diagonal hatch for days a parent does not work anyway. */
+@utility bg-hatch {
+  /* Dark and light stripe side by side, so the hatch reads on white rows and on coloured bars. */
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 4px,
+    color-mix(in oklab, var(--color-zinc-500) 40%, transparent) 4px 5px,
+    color-mix(in oklab, white 55%, transparent) 5px 6.5px
+  );
+}
+
+html {
+  overflow-x: clip;
+  color-scheme: light;
+}
+
+@layer base {
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  a[href],
+  select:not(:disabled),
+  label {
+    cursor: pointer;
+  }
+}
+
+body {
+  font-family: var(--font-sans);
+  @apply bg-zinc-100 text-zinc-950 antialiased scheme-light;
+}
+
+@media print {
+  body {
+    @apply bg-white;
+  }
+}
