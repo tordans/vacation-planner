@@ -26,6 +26,10 @@ type MonthBlockProps = {
   onOpenMonth: (start: IsoDay, end: IsoDay) => void
 }
 
+/** The past is done: faded until the month card is hovered or focused. */
+const PAST_CLASS =
+  'opacity-40 grayscale transition duration-150 group-hover/month:opacity-100 group-hover/month:grayscale-0 group-focus-within/month:opacity-100 group-focus-within/month:grayscale-0 motion-reduce:transition-none print:opacity-100 print:grayscale-0'
+
 function monthDays(year: number, month: number) {
   const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`
   const first = `${prefix}01`
@@ -59,8 +63,10 @@ export function MonthBlock({
   )
 
   return (
-    <section className="break-inside-avoid rounded-lg bg-white p-3 shadow-xs ring-1 ring-zinc-200">
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+    <section className="group/month break-inside-avoid rounded-lg bg-white p-3 shadow-xs ring-1 ring-zinc-200">
+      <div
+        className={cn('flex flex-wrap items-baseline gap-x-2 gap-y-1', last < today && PAST_CLASS)}
+      >
         <h3>
           <button
             type="button"
@@ -111,6 +117,7 @@ export function MonthBlock({
                   calendar={calendar}
                   isGap={gaps.has(day)}
                   isToday={day === today}
+                  isPast={day < today}
                   onOpen={onOpenDay}
                 />
               ),
@@ -128,10 +135,11 @@ type DayCellProps = {
   calendar: Calendar
   isGap: boolean
   isToday: boolean
+  isPast: boolean
   onOpen: (day: IsoDay) => void
 }
 
-function DayCell({ day, plan, calendar, isGap, isToday, onOpen }: DayCellProps) {
+function DayCell({ day, plan, calendar, isGap, isToday, isPast, onOpen }: DayCellProps) {
   const info = calendar.days.get(day)
   const isWeekend = isoWeekday(day) > 5
   const entry = plan.entries.find((candidate) => candidate.start <= day && candidate.end >= day)
@@ -181,6 +189,7 @@ function DayCell({ day, plan, calendar, isGap, isToday, onOpen }: DayCellProps) 
           info?.publicHoliday && 'bg-rose-200 font-semibold text-rose-950',
           info?.bridgeDay && 'outline-2 -outline-offset-2 outline-orange-500 outline-dashed',
           isToday && 'font-bold underline decoration-2 underline-offset-2',
+          isPast && PAST_CLASS,
         )}
         onClick={() => onOpen(day)}
       >

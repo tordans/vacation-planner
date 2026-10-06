@@ -1,6 +1,7 @@
 import { DateRangeDisplay } from '@/components/ui/DateDisplay'
 import type { Calendar } from '@/features/holidays/periods'
 import type { DayRange } from '@/features/plan/plan-actions'
+import { cn } from '@/lib/cn'
 import { addDays, formatDay, isoWeekday, yearOf, type IsoDay } from '@/lib/dates'
 import { paddedRange } from './zoom-range'
 
@@ -11,6 +12,9 @@ type HolidayListProps = {
   today: IsoDay
   onOpen: (range: DayRange) => void
 }
+
+const PAST_ROW_CLASS =
+  'opacity-50 transition duration-150 hover:opacity-100 focus-within:opacity-100 motion-reduce:transition-none print:opacity-100'
 
 function gapsWithin(range: DayRange, gaps: Set<IsoDay>) {
   let count = 0
@@ -35,7 +39,10 @@ export function HolidayList({ year, calendar, gaps, today, onOpen }: HolidayList
           {schoolHolidays.map((period) => {
             const open = gapsWithin(period, gaps)
             return (
-              <li key={`${period.start}-${period.name}`}>
+              <li
+                key={`${period.start}-${period.name}`}
+                className={period.end < today ? PAST_ROW_CLASS : undefined}
+              >
                 <button
                   type="button"
                   className="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-0.5 rounded-sm py-2 text-left hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-sky-600"
@@ -79,7 +86,10 @@ export function HolidayList({ year, calendar, gaps, today, onOpen }: HolidayList
             return (
               <li
                 key={period.start}
-                className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-1.5"
+                className={cn(
+                  'flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-1.5',
+                  period.end < today && PAST_ROW_CLASS,
+                )}
               >
                 <span className={weekday > 5 ? 'text-zinc-400' : undefined}>{period.name}</span>
                 <span className="ml-auto text-right whitespace-nowrap text-zinc-600 tabular-nums">

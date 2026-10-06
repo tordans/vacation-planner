@@ -50,7 +50,11 @@ export function PlanList({ plan, year, calendar, today, onOpen }: PlanListProps)
         return (
           <li
             key={item.id}
-            className="grid items-center gap-x-4 gap-y-1 px-4 py-3 text-sm sm:grid-cols-[11rem_minmax(0,1fr)_auto]"
+            className={cn(
+              'grid items-center gap-x-4 gap-y-1 px-4 py-3 text-sm sm:grid-cols-[11rem_minmax(0,1fr)_auto]',
+              item.end < today &&
+                'opacity-50 transition duration-150 hover:opacity-100 focus-within:opacity-100 motion-reduce:transition-none print:opacity-100',
+            )}
           >
             <span className="text-zinc-700">
               <DateRangeDisplay start={item.start} end={item.end} />
