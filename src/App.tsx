@@ -12,6 +12,7 @@ import { federalStateByCode } from '@/features/holidays/federal-states'
 import { useCalendar } from '@/features/holidays/use-calendar'
 import { readLastPlan } from '@/features/plan/last-plan'
 import { usePlan, useView } from '@/features/plan/use-plan'
+import { CalendarDialog } from '@/features/settings/CalendarDialog'
 import { SettingsDialog } from '@/features/settings/SettingsDialog'
 import { YearOverview } from '@/features/year-overview/YearOverview'
 import { addDays, daysBetween, formatSavedCompact, formatSavedFull, yearOf } from '@/lib/dates'
@@ -25,6 +26,7 @@ export default function App() {
   const { year } = view
   const [lastPlan] = useState(() => (hasPlan ? null : readLastPlan()))
   const [settingsOpen, setSettingsOpen] = useState(!hasPlan && lastPlan === null)
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
   // Guard against hand-edited links with absurd ranges.
@@ -42,9 +44,10 @@ export default function App() {
       if (!years.includes(other)) years.push(other)
     }
   }
-  const { calendar, isPending, isError, missingYears, refetch } = useCalendar(
+  const { calendar, source, isPending, isError, missingYears, refetch } = useCalendar(
     plan.federalState,
     years,
+    plan,
   )
   const federalState = federalStateByCode(plan.federalState)
 
@@ -152,6 +155,7 @@ export default function App() {
             year={year}
             calendar={calendar}
             onOpenRange={(next) => view.openRange(next.start, next.end)}
+            onEditCalendar={() => setCalendarOpen(true)}
           />
         )}
       </main>
@@ -169,6 +173,15 @@ export default function App() {
         </a>
       </footer>
 
+      <CalendarDialog
+        open={calendarOpen}
+        onClose={() => setCalendarOpen(false)}
+        plan={plan}
+        year={year}
+        source={source}
+        federalStateName={federalState.name}
+        onCommit={commit}
+      />
       <SettingsDialog
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}

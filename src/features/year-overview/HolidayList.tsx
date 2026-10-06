@@ -11,10 +11,14 @@ type HolidayListProps = {
   gaps: Set<IsoDay>
   today: IsoDay
   onOpen: (range: DayRange) => void
+  onEdit: () => void
 }
 
 const PAST_ROW_CLASS =
   'opacity-50 transition duration-150 hover:opacity-100 focus-within:opacity-100 motion-reduce:transition-none print:opacity-100'
+
+const EDIT_BUTTON_CLASS =
+  'rounded-md px-2 py-1 text-xs font-medium text-sky-700 hover:bg-sky-50 focus-visible:outline-2 focus-visible:outline-sky-600 print:hidden'
 
 function gapsWithin(range: DayRange, gaps: Set<IsoDay>) {
   let count = 0
@@ -25,7 +29,7 @@ function gapsWithin(range: DayRange, gaps: Set<IsoDay>) {
 }
 
 /** School holidays and public holidays of the year, with what is still unplanned. */
-export function HolidayList({ year, calendar, gaps, today, onOpen }: HolidayListProps) {
+export function HolidayList({ year, calendar, gaps, today, onOpen, onEdit }: HolidayListProps) {
   const schoolHolidays = calendar.schoolHolidays.filter(
     (period) => yearOf(period.start) <= year && yearOf(period.end) >= year,
   )
@@ -34,7 +38,12 @@ export function HolidayList({ year, calendar, gaps, today, onOpen }: HolidayList
   return (
     <div className="grid gap-3 lg:grid-cols-2">
       <section className="rounded-lg bg-white p-4 shadow-xs ring-1 ring-zinc-200">
-        <h3 className="text-sm font-semibold">Ferien {year}</h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold">Ferien und schulfreie Tage {year}</h3>
+          <button type="button" className={EDIT_BUTTON_CLASS} onClick={onEdit}>
+            Anpassen
+          </button>
+        </div>
         <ul className="mt-2 divide-y divide-zinc-100 text-sm">
           {schoolHolidays.map((period) => {
             const open = gapsWithin(period, gaps)
@@ -72,7 +81,12 @@ export function HolidayList({ year, calendar, gaps, today, onOpen }: HolidayList
         </ul>
       </section>
       <section className="rounded-lg bg-white p-4 shadow-xs ring-1 ring-zinc-200">
-        <h3 className="text-sm font-semibold">Feiertage und Brückentage {year}</h3>
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-sm font-semibold">Feiertage und Brückentage {year}</h3>
+          <button type="button" className={EDIT_BUTTON_CLASS} onClick={onEdit}>
+            Anpassen
+          </button>
+        </div>
         <ul className="mt-2 divide-y divide-zinc-100 text-sm">
           {publicHolidays.map((period) => {
             const weekday = isoWeekday(period.start)

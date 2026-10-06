@@ -17,12 +17,19 @@ type YearOverviewProps = {
   year: number
   calendar: Calendar
   onOpenRange: (range: DayRange) => void
+  onEditCalendar: () => void
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, month) => month)
 
 /** Read-only overview of the year. Clicking anything opens the detail planning for that period. */
-export function YearOverview({ plan, year, calendar, onOpenRange }: YearOverviewProps) {
+export function YearOverview({
+  plan,
+  year,
+  calendar,
+  onOpenRange,
+  onEditCalendar,
+}: YearOverviewProps) {
   const now = useNow()
   const todayDay = today(now)
   const gaps = coverageGaps(plan, year, calendar, todayDay)
@@ -59,6 +66,7 @@ export function YearOverview({ plan, year, calendar, onOpenRange }: YearOverview
         gaps={gaps}
         today={todayDay}
         onOpen={onOpenRange}
+        onEdit={onEditCalendar}
       />
 
       <section className="space-y-3">

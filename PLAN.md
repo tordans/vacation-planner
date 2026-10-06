@@ -377,8 +377,8 @@ Milestones 1–8 are implemented. Where the build deviates from the sections abo
 1. **Imported holidays in the URL?** Plan says no (refetch by state + year, cached locally). The
    transcript's "fill once per year" could also mean a snapshot stored in the plan — more robust if
    the API disappears, but noticeably longer links.
-2. **Extra closure days** (Kita/Hort closing days, school training days) — add a manual "custom
-   day off" list in v1, or later?
+2. ~~Extra closure days~~ — built: "Anpassen" in the year overview lists all imported school and
+   public holidays for correcting or removing, and adds own school-free days. Stored in the link.
 3. **Half days and carry-over leave** (Resturlaub from the previous year) — assumed out of scope
    for v1; the per-year budget can simply be entered including carry-over.
 4. **UI language** — assumed German only.

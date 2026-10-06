@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveBridgeDays, normalizePeriods } from '@/features/holidays/periods'
+import { applyCalendarEdits, deriveBridgeDays, normalizePeriods } from '@/features/holidays/periods'
 import { BERLIN_2027, berlin2027 } from './fixtures'
 
 describe('deriveBridgeDays', () => {
@@ -47,6 +47,37 @@ describe('normalizePeriods', () => {
       { name: 'A', start: '2027-01-01', end: '2027-01-01' },
       { name: 'B / C', start: '2027-05-01', end: '2027-05-01' },
     ])
+  })
+})
+
+describe('applyCalendarEdits', () => {
+  it('adds own school-free days and corrects or removes imported holidays', () => {
+    const edited = applyCalendarEdits(BERLIN_2027, {
+      customDays: [{ name: 'Studientag', start: '2027-11-12', end: '2027-11-12' }],
+      adjustments: [
+        { kind: 'school', start: '2027-02-01', end: '2027-02-06', replacement: null },
+        {
+          kind: 'school',
+          start: '2027-10-11',
+          end: '2027-10-23',
+          replacement: { name: 'Herbstferien', start: '2027-10-11', end: '2027-10-22' },
+        },
+        { kind: 'public', start: '2027-03-08', end: '2027-03-08', replacement: null },
+      ],
+    })
+    const names = edited.schoolHolidays.map((period) => period.name)
+    expect(names).not.toContain('Winterferien')
+    expect(names).toContain('Studientag')
+    expect(edited.schoolHolidays.find((period) => period.name === 'Herbstferien')?.end).toBe(
+      '2027-10-22',
+    )
+    expect(edited.publicHolidays).toHaveLength(BERLIN_2027.publicHolidays.length - 1)
+  })
+
+  it('leaves the imported data alone without edits', () => {
+    expect(applyCalendarEdits(BERLIN_2027, { customDays: [], adjustments: [] })).toEqual(
+      BERLIN_2027,
+    )
   })
 })
 

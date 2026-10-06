@@ -65,6 +65,39 @@ export function deriveBridgeDays(publicHolidays: Period[]): IsoDay[] {
   return [...bridgeDays].toSorted()
 }
 
+/** Family-specific corrections on top of the imported holidays. */
+export type CalendarEdits = {
+  customDays: Period[]
+  adjustments: Array<{
+    kind: 'school' | 'public'
+    start: IsoDay
+    end: IsoDay
+    replacement: Period | null
+  }>
+}
+
+/** Corrects or removes imported holidays and adds the family's own school-free days. */
+export function applyCalendarEdits(source: YearPeriods, edits: CalendarEdits): YearPeriods {
+  const adjust = (kind: 'school' | 'public', periods: Period[]) =>
+    periods.flatMap((period) => {
+      const adjustment = edits.adjustments.find(
+        (candidate) =>
+          candidate.kind === kind &&
+          candidate.start === period.start &&
+          candidate.end === period.end,
+      )
+      if (!adjustment) return [period]
+      return adjustment.replacement ? [adjustment.replacement] : []
+    })
+  return {
+    schoolHolidays: normalizePeriods([
+      ...adjust('school', source.schoolHolidays),
+      ...edits.customDays,
+    ]),
+    publicHolidays: normalizePeriods(adjust('public', source.publicHolidays)),
+  }
+}
+
 type DayInfo = {
   schoolHoliday?: string
   publicHoliday?: string

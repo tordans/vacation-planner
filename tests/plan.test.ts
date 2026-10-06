@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { coverageGaps } from '@/features/plan/coverage-gaps'
 import { leaveAccount, rangeCost } from '@/features/plan/leave-account'
 import {
+  addCustomDay,
   addEntry,
   addPersonalLeave,
+  adjustHoliday,
   blockersFor,
   freeWindow,
   removeEntry,
@@ -30,6 +32,13 @@ describe('plan url', () => {
     })
     plan = addPersonalLeave(plan, 'father', { start: '2027-09-06', end: '2027-09-10' }).plan
     plan.parents.mother.name = 'Anna'
+    plan = addCustomDay(plan, { name: 'Studientag', start: '2027-11-12', end: '2027-11-12' })
+    plan = adjustHoliday(plan, { kind: 'school', start: '2027-02-01', end: '2027-02-06' }, null)
+    plan = adjustHoliday(
+      plan,
+      { kind: 'public', start: '2027-03-08', end: '2027-03-08' },
+      { name: 'Frauentag', start: '2027-03-09', end: '2027-03-09' },
+    )
     expect(decodePlan(encodePlan(plan))).toEqual(plan)
   })
 

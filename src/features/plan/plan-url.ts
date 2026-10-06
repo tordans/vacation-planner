@@ -60,6 +60,25 @@ function toWire(plan: Plan): WirePlan {
       leave.place,
       leave.note,
     ]),
+    ...(plan.customDays.length > 0
+      ? { d: plan.customDays.map((day) => [day.start, day.end, day.name] as const) }
+      : {}),
+    ...(plan.adjustments.length > 0
+      ? {
+          a: plan.adjustments.map((adjustment) => {
+            const shown = adjustment.replacement ?? { ...adjustment, name: '' }
+            return [
+              adjustment.kind === 'public' ? 1 : 0,
+              adjustment.start,
+              adjustment.end,
+              adjustment.replacement === null ? 1 : 0,
+              shown.start,
+              shown.end,
+              shown.name,
+            ] as const
+          }),
+        }
+      : {}),
   }
 }
 
@@ -92,6 +111,16 @@ function fromWire(wire: WirePlan): Plan {
         place,
         note,
       })),
+    customDays: (wire.d ?? [])
+      .filter(([start, end]) => start <= end)
+      .map(([start, end, name]) => ({ name, start, end })),
+    adjustments: (wire.a ?? []).map(([kind, start, end, removed, newStart, newEnd, name]) => ({
+      kind: kind === 1 ? 'public' : 'school',
+      start,
+      end,
+      replacement:
+        removed === 1 || newStart > newEnd ? null : { name, start: newStart, end: newEnd },
+    })),
   }
 }
 

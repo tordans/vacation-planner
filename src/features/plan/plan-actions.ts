@@ -1,5 +1,14 @@
 import { addDays, daysBetween, type IsoDay } from '@/lib/dates'
-import type { Carer, FamilyEntry, Parent, ParentRole, PersonalLeave, Plan } from './plan-schema'
+import type {
+  CalendarAdjustment,
+  Carer,
+  CustomDay,
+  FamilyEntry,
+  Parent,
+  ParentRole,
+  PersonalLeave,
+  Plan,
+} from './plan-schema'
 import { withFreshIds } from './plan-url'
 
 export type DayRange = { start: IsoDay; end: IsoDay }
@@ -84,6 +93,48 @@ export function updateParent(
   patch: Partial<Omit<Parent, 'role'>>,
 ): Plan {
   return { ...plan, parents: { ...plan.parents, [role]: { ...plan.parents[role], ...patch } } }
+}
+
+export function addCustomDay(plan: Plan, day: CustomDay): Plan {
+  return { ...plan, customDays: [...plan.customDays, day] }
+}
+
+export function updateCustomDay(plan: Plan, index: number, patch: Partial<CustomDay>): Plan {
+  return {
+    ...plan,
+    customDays: plan.customDays.map((day, position) =>
+      position === index ? { ...day, ...patch } : day,
+    ),
+  }
+}
+
+export function removeCustomDay(plan: Plan, index: number): Plan {
+  return { ...plan, customDays: plan.customDays.filter((_, position) => position !== index) }
+}
+
+/**
+ * Corrects or removes (`replacement: null`) one imported holiday.
+ * `replacement: undefined` drops the correction, so the imported dates apply again.
+ */
+export function adjustHoliday(
+  plan: Plan,
+  original: Pick<CalendarAdjustment, 'kind' | 'start' | 'end'>,
+  replacement: CustomDay | null | undefined,
+): Plan {
+  const others = plan.adjustments.filter(
+    (adjustment) =>
+      adjustment.kind !== original.kind ||
+      adjustment.start !== original.start ||
+      adjustment.end !== original.end,
+  )
+  if (replacement === undefined) return { ...plan, adjustments: others }
+  return {
+    ...plan,
+    adjustments: [
+      ...others,
+      { kind: original.kind, start: original.start, end: original.end, replacement },
+    ],
+  }
 }
 
 /**

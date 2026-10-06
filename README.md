@@ -22,6 +22,8 @@ app title, so an old bookmark is recognisable as old.
   four-day week or a bridge day on a day off is accounted for correctly.
 - **Holidays** come from [mehr-schulferien.de](https://www.mehr-schulferien.de) for the selected
   federal state (default Berlin), loaded once per year and cached in the browser.
+  "Anpassen" lists them all so single dates can be corrected or removed, and adds the family's
+  own school-free days (training days, after-school care closed). These edits live in the link.
 
 ## URL parameters
 

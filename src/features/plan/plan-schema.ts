@@ -44,11 +44,31 @@ export type PersonalLeave = {
   note: string
 }
 
+/** A school-free period the family adds on its own, e.g. "Studientag" or "Hort geschlossen". */
+export type CustomDay = {
+  name: string
+  start: IsoDay
+  end: IsoDay
+}
+
+/**
+ * A correction of one imported school or public holiday, identified by its original dates.
+ * `replacement: null` removes the holiday.
+ */
+export type CalendarAdjustment = {
+  kind: 'school' | 'public'
+  start: IsoDay
+  end: IsoDay
+  replacement: CustomDay | null
+}
+
 export type Plan = {
   federalState: string
   parents: Record<ParentRole, Parent>
   entries: FamilyEntry[]
   personalLeave: PersonalLeave[]
+  customDays: CustomDay[]
+  adjustments: CalendarAdjustment[]
 }
 
 export const PARENT_LABELS: Record<ParentRole, string> = {
@@ -84,6 +104,8 @@ export function emptyPlan(): Plan {
     parents: { mother: emptyParent('mother'), father: emptyParent('father') },
     entries: [],
     personalLeave: [],
+    customDays: [],
+    adjustments: [],
   }
 }
 
@@ -126,6 +148,25 @@ export const wirePlanSchema = z.object({
       z.string(),
     ]),
   ),
+  /** Own school-free days: [start, end, name]. Left out when empty. */
+  d: z.array(z.tuple([isoDaySchema, isoDaySchema, z.string()])).optional(),
+  /**
+   * Corrected imported holidays:
+   * [kind (0 school, 1 public), original start, original end, removed (0/1), start, end, name]
+   */
+  a: z
+    .array(
+      z.tuple([
+        kindSchema,
+        isoDaySchema,
+        isoDaySchema,
+        kindSchema,
+        isoDaySchema,
+        isoDaySchema,
+        z.string(),
+      ]),
+    )
+    .optional(),
 })
 
 export type WirePlan = z.infer<typeof wirePlanSchema>
