@@ -12,6 +12,7 @@ import {
   WEEKDAY_LABELS,
   type IsoDay,
 } from '@/lib/dates'
+import { paddedRange } from './zoom-range'
 
 type MonthBlockProps = {
   year: number
@@ -46,6 +47,10 @@ export function MonthBlock({
   const days = monthDays(year, month)
   const first = days[0]!
   const last = days.at(-1)!
+  // Holidays touching this month, e.g. "Osterferien" in both March and April.
+  const schoolHolidays = calendar.schoolHolidays.filter(
+    (period) => period.start <= last && period.end >= first,
+  )
   const leadingBlanks = isoWeekday(first) - 1
   const cells: Array<IsoDay | null> = [...Array<null>(leadingBlanks).fill(null), ...days]
   while (cells.length % 7 !== 0) cells.push(null)
@@ -55,15 +60,30 @@ export function MonthBlock({
 
   return (
     <section className="break-inside-avoid rounded-lg bg-white p-3 shadow-xs ring-1 ring-zinc-200">
-      <h3>
-        <button
-          type="button"
-          className="rounded-sm text-sm font-semibold hover:text-sky-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
-          onClick={() => onOpenMonth(addDays(first, -3), addDays(last, 3))}
-        >
-          {MONTH_NAMES[month]}
-        </button>
-      </h3>
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <h3>
+          <button
+            type="button"
+            className="rounded-sm text-sm font-semibold hover:text-sky-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+            onClick={() => onOpenMonth(addDays(first, -3), addDays(last, 3))}
+          >
+            {MONTH_NAMES[month]}
+          </button>
+        </h3>
+        {schoolHolidays.map((period) => (
+          <button
+            key={`${period.start}-${period.name}`}
+            type="button"
+            className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-950 hover:bg-amber-200 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-sky-600 print:bg-transparent print:px-0"
+            onClick={() => {
+              const range = paddedRange(period)
+              onOpenMonth(range.start, range.end)
+            }}
+          >
+            {period.name}
+          </button>
+        ))}
+      </div>
       <div className="mt-2 grid grid-cols-[1.5rem_repeat(7,minmax(0,1fr))] gap-px text-center text-xs">
         <span className="text-[0.625rem] text-zinc-400">KW</span>
         {WEEKDAY_LABELS.map((label) => (
