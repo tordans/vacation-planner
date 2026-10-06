@@ -544,7 +544,8 @@ export function DetailGantt({
                 const box = boxFor(scale, period)
                 if (!box) return null
                 const length = daysBetween(period.start, period.end) + 1
-                const isOpen = entry.carers.length === 0
+                // Open care is only a to-do while the period is not over.
+                const isOpen = entry.carers.length === 0 && entry.end >= todayDay
                 return (
                   <GanttBar
                     key={entry.id}

@@ -25,8 +25,9 @@ import {
   type StayKind,
 } from '@/features/plan/plan-schema'
 import { CARER_STYLES, STAY_STYLES } from '@/features/plan/styles'
+import { useNow } from '@/hooks/use-now'
 import { cn } from '@/lib/cn'
-import { daysBetween, formatDayShort, isIsoDay } from '@/lib/dates'
+import { daysBetween, formatDayShort, isIsoDay, today } from '@/lib/dates'
 
 export type Selection = { type: 'family' | 'personal'; id: string }
 
@@ -87,6 +88,7 @@ export function GanttEditor({ plan, calendar, selection, onCommit, onDeselect }:
 type EntryEditorProps = Omit<GanttEditorProps, 'selection'> & { entry: FamilyEntry }
 
 function EntryEditor({ plan, calendar, entry, onCommit, onDeselect }: EntryEditorProps) {
+  const now = useNow()
   const length = daysBetween(entry.start, entry.end) + 1
   const window = freeWindow(blockersFor(plan, { row: 'family' }, entry.id), entry, FAR_LIMITS)
 
@@ -161,7 +163,7 @@ function EntryEditor({ plan, calendar, entry, onCommit, onDeselect }: EntryEdito
             )
           })}
         </div>
-        {entry.carers.length === 0 && (
+        {entry.carers.length === 0 && entry.end >= today(now) && (
           <p className="mt-2 text-xs font-medium text-red-600">
             Betreuung ist noch offen. Die Ferientage in diesem Zeitraum gelten als ungeplant.
           </p>

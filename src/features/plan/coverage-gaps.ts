@@ -5,8 +5,14 @@ import type { Plan } from './plan-schema'
 /**
  * School-free weekdays in the year nobody is planned for yet:
  * no family entry at all, or an entry whose care is still open.
+ * Days before `today` are never gaps: the past needs no planning anymore.
  */
-export function coverageGaps(plan: Plan, year: number, calendar: Calendar): Set<IsoDay> {
+export function coverageGaps(
+  plan: Plan,
+  year: number,
+  calendar: Calendar,
+  today: IsoDay,
+): Set<IsoDay> {
   const covered = new Set<IsoDay>()
   for (const entry of plan.entries) {
     if (entry.carers.length === 0) continue
@@ -14,7 +20,7 @@ export function coverageGaps(plan: Plan, year: number, calendar: Calendar): Set<
   }
   const gaps = new Set<IsoDay>()
   for (const [day, info] of calendar.days) {
-    if (yearOf(day) !== year) continue
+    if (yearOf(day) !== year || day < today) continue
     if (info.schoolHoliday === undefined || info.publicHoliday !== undefined) continue
     if (isoWeekday(day) > 5 || covered.has(day)) continue
     gaps.add(day)

@@ -8,6 +8,7 @@ type HolidayListProps = {
   year: number
   calendar: Calendar
   gaps: Set<IsoDay>
+  today: IsoDay
   onOpen: (range: DayRange) => void
 }
 
@@ -20,7 +21,7 @@ function gapsWithin(range: DayRange, gaps: Set<IsoDay>) {
 }
 
 /** School holidays and public holidays of the year, with what is still unplanned. */
-export function HolidayList({ year, calendar, gaps, onOpen }: HolidayListProps) {
+export function HolidayList({ year, calendar, gaps, today, onOpen }: HolidayListProps) {
   const schoolHolidays = calendar.schoolHolidays.filter(
     (period) => yearOf(period.start) <= year && yearOf(period.end) >= year,
   )
@@ -43,7 +44,11 @@ export function HolidayList({ year, calendar, gaps, onOpen }: HolidayListProps) 
                   <span className="font-medium">{period.name}</span>
                   <span className="flex items-center gap-2 text-zinc-600">
                     <DateRangeDisplay start={period.start} end={period.end} />
-                    {open > 0 ? (
+                    {period.end < today ? (
+                      <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500">
+                        vorbei
+                      </span>
+                    ) : open > 0 ? (
                       <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
                         {open} {open === 1 ? 'Tag' : 'Tage'} offen
                       </span>
@@ -61,7 +66,7 @@ export function HolidayList({ year, calendar, gaps, onOpen }: HolidayListProps) 
       </section>
       <section className="rounded-lg bg-white p-4 shadow-xs ring-1 ring-zinc-200">
         <h3 className="text-sm font-semibold">Feiertage und Brückentage {year}</h3>
-        <ul className="mt-2 grid gap-x-6 text-sm sm:grid-cols-2">
+        <ul className="mt-2 divide-y divide-zinc-100 text-sm">
           {publicHolidays.map((period) => {
             const weekday = isoWeekday(period.start)
             const bridgeDay =
@@ -72,9 +77,12 @@ export function HolidayList({ year, calendar, gaps, onOpen }: HolidayListProps) 
                   : null
             const hasBridgeDay = bridgeDay !== null && calendar.bridgeDays.includes(bridgeDay)
             return (
-              <li key={period.start} className="flex items-baseline justify-between gap-3 py-1.5">
+              <li
+                key={period.start}
+                className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-1.5"
+              >
                 <span className={weekday > 5 ? 'text-zinc-400' : undefined}>{period.name}</span>
-                <span className="shrink-0 text-right text-zinc-600 tabular-nums">
+                <span className="ml-auto text-right whitespace-nowrap text-zinc-600 tabular-nums">
                   {formatDay(period.start, 'EEEEEE dd.MM.')}
                   {hasBridgeDay && bridgeDay && (
                     <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-900">

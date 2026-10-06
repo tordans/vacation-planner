@@ -117,7 +117,7 @@ describe('leave account', () => {
 
 describe('coverage gaps', () => {
   it('lists school-free weekdays without care', () => {
-    const gaps = coverageGaps(familyPlan(), 2027, berlin2027)
+    const gaps = coverageGaps(familyPlan(), 2027, berlin2027, '2027-01-01')
     expect(gaps.has('2027-07-01')).toBe(true)
     expect(gaps.has('2027-07-03')).toBe(false) // Saturday
     expect(gaps.has('2027-03-26')).toBe(false) // Karfreitag
@@ -125,11 +125,18 @@ describe('coverage gaps', () => {
     expect(gaps.size).toBe(5 + 8 + 1 + 2 + 32 + 10 + 8)
   })
 
+  it('does not ask to plan days that are already over', () => {
+    const gaps = coverageGaps(familyPlan(), 2027, berlin2027, '2027-07-15')
+    expect(gaps.has('2027-07-14')).toBe(false)
+    expect(gaps.has('2027-07-15')).toBe(true)
+    expect(gaps.has('2027-02-01')).toBe(false)
+  })
+
   it('closes gaps once someone takes care, but not while care is open', () => {
     const open = addEntry(familyPlan(), { start: '2027-02-01', end: '2027-02-05' })
-    expect(coverageGaps(open.plan, 2027, berlin2027).has('2027-02-01')).toBe(true)
+    expect(coverageGaps(open.plan, 2027, berlin2027, '2027-01-01').has('2027-02-01')).toBe(true)
     const covered = toggleCarer(open.plan, open.id, 'grandparents')
-    expect(coverageGaps(covered, 2027, berlin2027).has('2027-02-01')).toBe(false)
+    expect(coverageGaps(covered, 2027, berlin2027, '2027-01-01').has('2027-02-01')).toBe(false)
   })
 })
 

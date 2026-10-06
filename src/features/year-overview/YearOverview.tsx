@@ -24,7 +24,8 @@ const MONTHS = Array.from({ length: 12 }, (_, month) => month)
 /** Read-only overview of the year. Clicking anything opens the detail planning for that period. */
 export function YearOverview({ plan, year, calendar, onOpenRange }: YearOverviewProps) {
   const now = useNow()
-  const gaps = coverageGaps(plan, year, calendar)
+  const todayDay = today(now)
+  const gaps = coverageGaps(plan, year, calendar, todayDay)
 
   return (
     <div className="space-y-6">
@@ -44,7 +45,7 @@ export function YearOverview({ plan, year, calendar, onOpenRange }: YearOverview
               plan={plan}
               calendar={calendar}
               gaps={gaps}
-              today={today(now)}
+              today={todayDay}
               onOpenDay={(day) => onOpenRange(zoomRangeForDay(day, plan, calendar))}
               onOpenMonth={(start, end) => onOpenRange({ start, end })}
             />
@@ -52,11 +53,23 @@ export function YearOverview({ plan, year, calendar, onOpenRange }: YearOverview
         </div>
       </section>
 
-      <HolidayList year={year} calendar={calendar} gaps={gaps} onOpen={onOpenRange} />
+      <HolidayList
+        year={year}
+        calendar={calendar}
+        gaps={gaps}
+        today={todayDay}
+        onOpen={onOpenRange}
+      />
 
       <section className="space-y-3">
         <h2 className="text-base font-semibold">Geplant für {year}</h2>
-        <PlanList plan={plan} year={year} calendar={calendar} onOpen={onOpenRange} />
+        <PlanList
+          plan={plan}
+          year={year}
+          calendar={calendar}
+          today={todayDay}
+          onOpen={onOpenRange}
+        />
       </section>
     </div>
   )

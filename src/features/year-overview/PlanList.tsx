@@ -5,13 +5,14 @@ import type { DayRange } from '@/features/plan/plan-actions'
 import { carerLabel, PARENT_ROLES, parentLabel, type Plan } from '@/features/plan/plan-schema'
 import { CARER_STYLES, STAY_STYLES, stayTitle } from '@/features/plan/styles'
 import { cn } from '@/lib/cn'
-import { daysBetween, yearOf } from '@/lib/dates'
+import { daysBetween, yearOf, type IsoDay } from '@/lib/dates'
 import { paddedRange } from './zoom-range'
 
 type PlanListProps = {
   plan: Plan
   year: number
   calendar: Calendar
+  today: IsoDay
   onOpen: (range: DayRange) => void
 }
 
@@ -20,7 +21,7 @@ function touchesYear(range: DayRange, year: number) {
 }
 
 /** Everything planned for the year as a list, sorted by date. */
-export function PlanList({ plan, year, calendar, onOpen }: PlanListProps) {
+export function PlanList({ plan, year, calendar, today, onOpen }: PlanListProps) {
   const rows = [
     ...plan.entries.map((entry) => ({ type: 'family' as const, item: entry })),
     ...plan.personalLeave.map((leave) => ({ type: 'personal' as const, item: leave })),
@@ -80,7 +81,7 @@ export function PlanList({ plan, year, calendar, onOpen }: PlanListProps) {
                       {carerLabel(plan, carer)}
                     </span>
                   ))
-                ) : (
+                ) : item.end < today ? null : (
                   <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
                     Betreuung offen
                   </span>
