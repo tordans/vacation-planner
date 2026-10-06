@@ -5,6 +5,7 @@ import {
   LinkIcon,
 } from '@heroicons/react/20/solid'
 import { useState } from 'react'
+import { INFO_TOPICS, InfoFooter, showInfoTopic } from '@/components/InfoFooter'
 import { SavedDisplay } from '@/components/ui/DateDisplay'
 import { DetailGantt } from '@/features/detail-gantt/DetailGantt'
 import { MAX_RANGE_DAYS } from '@/features/detail-gantt/gantt-scale'
@@ -74,6 +75,13 @@ export default function App() {
           <h1 className="text-xl font-semibold tracking-tight">Urlaubsplaner</h1>
           <p className="mt-0.5 text-sm text-zinc-600">
             <SavedDisplay stamp={saved} />
+            <button
+              type="button"
+              className="ml-2 text-sky-700 underline underline-offset-2 hover:text-sky-900 print:hidden"
+              onClick={() => showInfoTopic(INFO_TOPICS.keeping)}
+            >
+              Wie sichere ich den Plan?
+            </button>
           </p>
         </div>
 
@@ -104,6 +112,13 @@ export default function App() {
           <button type="button" className={buttonClass} onClick={() => void copyLink()}>
             <LinkIcon className="size-4 text-zinc-500" />
             {copied ? 'Link kopiert' : 'Link kopieren'}
+          </button>
+          <button
+            type="button"
+            className="text-sm text-sky-700 underline underline-offset-2 hover:text-sky-900"
+            onClick={() => showInfoTopic(INFO_TOPICS.storage)}
+          >
+            Was steckt im Link?
           </button>
         </div>
       </header>
@@ -160,18 +175,7 @@ export default function App() {
         )}
       </main>
 
-      <footer className="flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-200 pt-4 text-xs text-zinc-500">
-        <span>
-          Ferien und Feiertage:{' '}
-          <a className="underline" href="https://www.mehr-schulferien.de">
-            mehr-schulferien.de
-          </a>
-        </span>
-        <span>Der Plan wird nur im Link gespeichert, nicht auf einem Server.</span>
-        <a className="underline" href="https://github.com/tordans/vacation-planner">
-          Quellcode
-        </a>
-      </footer>
+      <InfoFooter />
 
       <CalendarDialog
         open={calendarOpen}
