@@ -40,7 +40,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
-    "@types/web": "^0.0.354",
+    "@types/web": "^0.0.357",
     "@vitejs/plugin-react": "^6.1.1",
     "browserslist": "^4.28.8",
     "browserslist-to-esbuild": "^2.1.1",
@@ -48,12 +48,12 @@
     "eslint-plugin-compat": "^7.0.2",
     "knip": "^6.33.0",
     "oxc-transform-react": "^0.147.0",
-    "oxfmt": "^0.65.0",
+    "oxfmt": "^0.71.0",
     "oxlint": "^1.80.0",
     "oxlint-tsgolint": "^7.0.2001",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",
-    "vite": "^8.2.2",
+    "vite": "^8.3.2",
     "vitest": "^4.1.11"
   },
   "optionalDependencies": {
