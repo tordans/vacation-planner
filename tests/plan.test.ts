@@ -8,6 +8,7 @@ import {
   adjustHoliday,
   blockersFor,
   freeWindow,
+  movableWindow,
   removeEntry,
   splitEntry,
   toggleCarer,
@@ -177,6 +178,20 @@ describe('plan actions', () => {
     expect(freeWindow(blockers, { start: '2027-08-05', end: '2027-08-05' }, limits)).toEqual({
       start: '2027-07-31',
       end: '2027-08-31',
+    })
+  })
+
+  it('lets a bar that already overlaps a blocker move out again', () => {
+    const blockers = [
+      { start: '2027-09-15', end: '2027-09-20' },
+      { start: '2027-09-25', end: '2027-09-30' },
+    ]
+    const leave = { start: '2027-09-13', end: '2027-09-17' }
+    const limits = { start: '2027-09-01', end: '2027-10-31' }
+    expect(freeWindow(blockers, leave, limits)).toBeNull()
+    expect(movableWindow(blockers, leave, limits)).toEqual({
+      start: '2027-09-01',
+      end: '2027-09-24',
     })
   })
 

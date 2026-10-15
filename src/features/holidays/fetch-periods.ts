@@ -14,16 +14,24 @@ const apiResponseSchema = z.object({
   ),
 })
 
+const periodSchema = z.object({ name: z.string(), start: z.string(), end: z.string() })
+
 const cachedSchema = z.object({
-  schoolHolidays: z.array(z.object({ name: z.string(), start: z.string(), end: z.string() })),
-  publicHolidays: z.array(z.object({ name: z.string(), start: z.string(), end: z.string() })),
+  fetchedAt: z.number(),
+  schoolHolidays: z.array(periodSchema),
+  publicHolidays: z.array(periodSchema),
 })
 
+type Cached = z.infer<typeof cachedSchema>
+
+/** Ask again after a month, so corrections published by the API reach every browser. */
+const CACHE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
+
 function cacheKey(slug: string, year: number) {
-  return `vacation-planner:periods:v1:${slug}:${year}`
+  return `vacation-planner:periods:v2:${slug}:${year}`
 }
 
-function readCache(key: string): YearPeriods | null {
+function readCache(key: string): Cached | null {
   try {
     const raw = localStorage.getItem(key)
     if (!raw) return null
@@ -36,7 +44,7 @@ function readCache(key: string): YearPeriods | null {
 
 function writeCache(key: string, periods: YearPeriods) {
   try {
-    localStorage.setItem(key, JSON.stringify(periods))
+    localStorage.setItem(key, JSON.stringify({ fetchedAt: Date.now(), ...periods }))
   } catch {
     // Storage full or blocked: the next visit simply fetches again.
   }
@@ -56,16 +64,30 @@ async function fetchKind(slug: string, year: number, kind: 'vacation' | 'holiday
   }))
 }
 
-/** School and public holidays overlapping the year. Loaded once per browser, then cached. */
+function toPeriods({ schoolHolidays, publicHolidays }: Cached): YearPeriods {
+  return { schoolHolidays, publicHolidays }
+}
+
+/**
+ * School and public holidays overlapping the year. Cached in the browser for a month;
+ * an outdated cache is still used when the API cannot be reached.
+ */
 export async function fetchYearPeriods(slug: string, year: number): Promise<YearPeriods> {
   const key = cacheKey(slug, year)
   const cached = readCache(key)
-  if (cached) return cached
+  if (cached && Date.now() - cached.fetchedAt < CACHE_MAX_AGE_MS) return toPeriods(cached)
 
-  const [schoolHolidays, publicHolidays] = await Promise.all([
-    fetchKind(slug, year, 'vacation'),
-    fetchKind(slug, year, 'holiday'),
-  ])
+  let schoolHolidays: Period[]
+  let publicHolidays: Period[]
+  try {
+    ;[schoolHolidays, publicHolidays] = await Promise.all([
+      fetchKind(slug, year, 'vacation'),
+      fetchKind(slug, year, 'holiday'),
+    ])
+  } catch (error) {
+    if (cached) return toPeriods(cached)
+    throw error
+  }
   const periods = {
     schoolHolidays: normalizePeriods(schoolHolidays),
     publicHolidays: normalizePeriods(publicHolidays),

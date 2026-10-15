@@ -113,6 +113,7 @@ export function SettingsDialog({ open, onClose, plan, year, onCommit }: Settings
                         max={366}
                         value={String(leaveBudget(parent, year))}
                         onCommit={(value) => {
+                          if (value.trim() === '') return
                           const days = Number(value)
                           if (!Number.isFinite(days) || days < 0 || days > 366) return
                           onCommit(

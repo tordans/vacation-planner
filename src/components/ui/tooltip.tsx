@@ -32,6 +32,8 @@ type TooltipProps = {
 export function Tooltip({ content, children, className }: TooltipProps) {
   const id = useId()
   const [anchor, setAnchor] = useState<Anchor | null>(null)
+  // Keeps the portal mounted until the exit animation is done; closed tooltips render none.
+  const [isMounted, setIsMounted] = useState(false)
   const timeoutRef = useRef<number | null>(null)
   const prefersReducedMotion = useReducedMotion() === true
 
@@ -58,6 +60,7 @@ export function Tooltip({ content, children, className }: TooltipProps) {
     clearTimer()
     timeoutRef.current = window.setTimeout(() => {
       timeoutRef.current = null
+      setIsMounted(true)
       setAnchor(measure(element))
     }, delay)
   }
@@ -78,6 +81,7 @@ export function Tooltip({ content, children, className }: TooltipProps) {
       hide()
       return
     }
+    setIsMounted(true)
     setAnchor(measure(event.currentTarget))
     clearTimer()
     timeoutRef.current = window.setTimeout(hide, TOUCH_VISIBLE_MS)
@@ -106,41 +110,47 @@ export function Tooltip({ content, children, className }: TooltipProps) {
       onBlur={hide}
     >
       {children}
-      {createPortal(
-        <AnimatePresence>
-          {anchor && (
-            <div
-              className="pointer-events-none fixed z-50 flex"
-              style={{
-                top: placeAbove ? anchor.top - GAP : anchor.bottom + GAP,
-                left: align === 'left' ? Math.max(anchor.left, GAP) : undefined,
-                right:
-                  align === 'right'
-                    ? Math.max(anchor.viewportWidth - anchor.right, GAP)
-                    : undefined,
-                ...(align === 'center' ? { left: anchor.center } : {}),
-              }}
-            >
-              <MotionDiv
-                id={id}
-                role="tooltip"
-                className="max-w-72 rounded-md bg-zinc-900 px-2.5 py-1.5 text-xs/5 font-medium text-white shadow-lg"
+      {isMounted &&
+        createPortal(
+          <AnimatePresence
+            onExitComplete={() => {
+              // Reopened while fading out: keep the portal.
+              if (anchor === null) setIsMounted(false)
+            }}
+          >
+            {anchor && (
+              <div
+                className="pointer-events-none fixed z-50 flex"
                 style={{
-                  x: align === 'center' ? '-50%' : 0,
-                  transformOrigin: placeAbove ? 'bottom' : 'top',
+                  top: placeAbove ? anchor.top - GAP : anchor.bottom + GAP,
+                  left: align === 'left' ? Math.max(anchor.left, GAP) : undefined,
+                  right:
+                    align === 'right'
+                      ? Math.max(anchor.viewportWidth - anchor.right, GAP)
+                      : undefined,
+                  ...(align === 'center' ? { left: anchor.center } : {}),
                 }}
-                initial={{ opacity: 0, y: placeAbove ? '-90%' : '-10%', scale: 0.96 }}
-                animate={{ opacity: 1, y: placeAbove ? '-100%' : '0%', scale: 1 }}
-                exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: prefersReducedMotion ? 0 : 0.14, ease: 'easeOut' }}
               >
-                {content}
-              </MotionDiv>
-            </div>
-          )}
-        </AnimatePresence>,
-        document.body,
-      )}
+                <MotionDiv
+                  id={id}
+                  role="tooltip"
+                  className="max-w-72 rounded-md bg-zinc-900 px-2.5 py-1.5 text-xs/5 font-medium text-white shadow-lg"
+                  style={{
+                    x: align === 'center' ? '-50%' : 0,
+                    transformOrigin: placeAbove ? 'bottom' : 'top',
+                  }}
+                  initial={{ opacity: 0, y: placeAbove ? '-90%' : '-10%', scale: 0.96 }}
+                  animate={{ opacity: 1, y: placeAbove ? '-100%' : '0%', scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: prefersReducedMotion ? 0 : 0.14, ease: 'easeOut' }}
+                >
+                  {content}
+                </MotionDiv>
+              </div>
+            )}
+          </AnimatePresence>,
+          document.body,
+        )}
     </span>
   )
 }

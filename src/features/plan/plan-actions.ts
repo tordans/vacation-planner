@@ -13,6 +13,17 @@ import { withFreshIds } from './plan-url'
 
 export type DayRange = { start: IsoDay; end: IsoDay }
 
+/** Wide enough for any plan; used where a bar is not limited to the visible range. */
+export const ANY_DAY: DayRange = { start: '1990-01-01', end: '2100-12-31' }
+
+function overlaps(a: DayRange, b: DayRange) {
+  return a.start <= b.end && a.end >= b.start
+}
+
+export function touchesYear(range: DayRange, year: number) {
+  return overlaps(range, { start: `${year}-01-01`, end: `${year}-12-31` })
+}
+
 export function addEntry(plan: Plan, range: DayRange): { plan: Plan; id: string } {
   const entry: FamilyEntry = { id: '', ...range, kind: 'home', place: '', note: '', carers: [] }
   const next = withFreshIds({ ...plan, entries: [...plan.entries, entry] })
@@ -169,7 +180,7 @@ export function freeWindow(
   let start = limits.start
   let end = limits.end
   for (const blocker of blockers) {
-    if (blocker.start <= anchor.end && blocker.end >= anchor.start) return null
+    if (overlaps(blocker, anchor)) return null
     if (blocker.end < anchor.start) {
       const candidate = addDays(blocker.end, 1)
       if (candidate > start) start = candidate
@@ -179,4 +190,13 @@ export function freeWindow(
     }
   }
   return start <= anchor.start && end >= anchor.end ? { start, end } : null
+}
+
+/**
+ * Where an existing bar may go. Blockers it already overlaps (e.g. after a parent was added as
+ * carer on top of their own leave) are ignored, so the bar can always be moved out again.
+ */
+export function movableWindow(blockers: DayRange[], bar: DayRange, limits: DayRange): DayRange {
+  const outside = blockers.filter((blocker) => !overlaps(blocker, bar))
+  return freeWindow(outside, bar, limits) ?? limits
 }

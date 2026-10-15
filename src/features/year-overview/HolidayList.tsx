@@ -1,6 +1,6 @@
 import { DateRangeDisplay } from '@/components/ui/DateDisplay'
 import type { Calendar } from '@/features/holidays/periods'
-import type { DayRange } from '@/features/plan/plan-actions'
+import { touchesYear, type DayRange } from '@/features/plan/plan-actions'
 import { cn } from '@/lib/cn'
 import { addDays, formatDay, isoWeekday, yearOf, type IsoDay } from '@/lib/dates'
 import { paddedRange } from './zoom-range'
@@ -30,9 +30,7 @@ function gapsWithin(range: DayRange, gaps: Set<IsoDay>) {
 
 /** School holidays and public holidays of the year, with what is still unplanned. */
 export function HolidayList({ year, calendar, gaps, today, onOpen, onEdit }: HolidayListProps) {
-  const schoolHolidays = calendar.schoolHolidays.filter(
-    (period) => yearOf(period.start) <= year && yearOf(period.end) >= year,
-  )
+  const schoolHolidays = calendar.schoolHolidays.filter((period) => touchesYear(period, year))
   const publicHolidays = calendar.publicHolidays.filter((period) => yearOf(period.start) === year)
 
   return (
@@ -90,13 +88,10 @@ export function HolidayList({ year, calendar, gaps, today, onOpen, onEdit }: Hol
         <ul className="mt-2 divide-y divide-zinc-100 text-sm">
           {publicHolidays.map((period) => {
             const weekday = isoWeekday(period.start)
-            const bridgeDay =
-              weekday === 4
-                ? addDays(period.start, 1)
-                : weekday === 2
-                  ? addDays(period.start, -1)
-                  : null
-            const hasBridgeDay = bridgeDay !== null && calendar.bridgeDays.includes(bridgeDay)
+            // The bridge day next to this holiday, as computed for the calendar.
+            const bridgeDay = [addDays(period.start, -1), addDays(period.end, 1)].find(
+              (day) => calendar.days.get(day)?.bridgeDay,
+            )
             return (
               <li
                 key={period.start}
@@ -108,7 +103,7 @@ export function HolidayList({ year, calendar, gaps, today, onOpen, onEdit }: Hol
                 <span className={weekday > 5 ? 'text-zinc-400' : undefined}>{period.name}</span>
                 <span className="ml-auto text-right whitespace-nowrap text-zinc-600 tabular-nums">
                   {formatDay(period.start, 'EEEEEE dd.MM.')}
-                  {hasBridgeDay && bridgeDay && (
+                  {bridgeDay && (
                     <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-900">
                       Brückentag {formatDay(bridgeDay, 'EEEEEE dd.MM.')}
                     </span>

@@ -7,11 +7,12 @@ import {
   addCustomDay,
   adjustHoliday,
   removeCustomDay,
+  touchesYear,
   updateCustomDay,
 } from '@/features/plan/plan-actions'
 import type { Plan } from '@/features/plan/plan-schema'
 import { cn } from '@/lib/cn'
-import { formatDayShort, isIsoDay, yearOf } from '@/lib/dates'
+import { formatDayShort, isIsoDay } from '@/lib/dates'
 
 type CalendarDialogProps = {
   open: boolean
@@ -28,10 +29,6 @@ const dateClass =
   'block w-full rounded-md border-zinc-300 text-sm shadow-xs focus:border-sky-600 focus:ring-sky-600 disabled:bg-zinc-50 disabled:text-zinc-400'
 const iconButtonClass =
   'inline-flex size-9 shrink-0 items-center justify-center rounded-md text-zinc-500 ring-1 ring-zinc-300 ring-inset hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-sky-600'
-
-function touchesYear(period: Period, year: number) {
-  return yearOf(period.start) <= year && yearOf(period.end) >= year
-}
 
 /** All school-free days of the year: the imported ones can be corrected, own ones added. */
 export function CalendarDialog({

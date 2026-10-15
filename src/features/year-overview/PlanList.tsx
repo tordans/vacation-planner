@@ -1,11 +1,11 @@
 import { DateDisplay, DateRangeDisplay } from '@/components/ui/DateDisplay'
 import type { Calendar } from '@/features/holidays/periods'
 import { rangeCost } from '@/features/plan/leave-account'
-import type { DayRange } from '@/features/plan/plan-actions'
+import { touchesYear, type DayRange } from '@/features/plan/plan-actions'
 import { carerLabel, PARENT_ROLES, parentLabel, type Plan } from '@/features/plan/plan-schema'
 import { CARER_STYLES, STAY_STYLES, stayTitle } from '@/features/plan/styles'
 import { cn } from '@/lib/cn'
-import { daysBetween, yearOf, type IsoDay } from '@/lib/dates'
+import { daysBetween, type IsoDay } from '@/lib/dates'
 import { paddedRange } from './zoom-range'
 
 type PlanListProps = {
@@ -14,10 +14,6 @@ type PlanListProps = {
   calendar: Calendar
   today: IsoDay
   onOpen: (range: DayRange) => void
-}
-
-function touchesYear(range: DayRange, year: number) {
-  return yearOf(range.start) <= year && yearOf(range.end) >= year
 }
 
 /** Everything planned for the year as a list, sorted by date. */

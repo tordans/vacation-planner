@@ -4,8 +4,9 @@ import { DraftInput } from '@/components/ui/DraftInput'
 import type { Calendar } from '@/features/holidays/periods'
 import { rangeCost } from '@/features/plan/leave-account'
 import {
+  ANY_DAY,
   blockersFor,
-  freeWindow,
+  movableWindow,
   middleOf,
   removeEntry,
   removePersonalLeave,
@@ -38,8 +39,6 @@ type GanttEditorProps = {
   onCommit: (plan: Plan, history?: 'push' | 'replace') => void
   onDeselect: () => void
 }
-
-const FAR_LIMITS: DayRange = { start: '1990-01-01', end: '2100-12-31' }
 
 /** Details of the selected bar, shown below the chart. */
 export function GanttEditor({ plan, calendar, selection, onCommit, onDeselect }: GanttEditorProps) {
@@ -90,11 +89,11 @@ type EntryEditorProps = Omit<GanttEditorProps, 'selection'> & { entry: FamilyEnt
 function EntryEditor({ plan, calendar, entry, onCommit, onDeselect }: EntryEditorProps) {
   const now = useNow()
   const length = daysBetween(entry.start, entry.end) + 1
-  const window = freeWindow(blockersFor(plan, { row: 'family' }, entry.id), entry, FAR_LIMITS)
+  const window = movableWindow(blockersFor(plan, { row: 'family' }, entry.id), entry, ANY_DAY)
 
   function changeDates(range: DayRange) {
     if (!isIsoDay(range.start) || !isIsoDay(range.end) || range.start > range.end) return
-    if (window && (range.start < window.start || range.end > window.end)) return
+    if (range.start < window.start || range.end > window.end) return
     onCommit(updateEntry(plan, entry.id, range))
   }
 
@@ -194,11 +193,11 @@ type LeaveEditorProps = Omit<GanttEditorProps, 'selection'> & { leave: PersonalL
 
 function LeaveEditor({ plan, calendar, leave, onCommit, onDeselect }: LeaveEditorProps) {
   const length = daysBetween(leave.start, leave.end) + 1
-  const window = freeWindow(blockersFor(plan, { row: leave.parent }, leave.id), leave, FAR_LIMITS)
+  const window = movableWindow(blockersFor(plan, { row: leave.parent }, leave.id), leave, ANY_DAY)
 
   function changeDates(range: DayRange) {
     if (!isIsoDay(range.start) || !isIsoDay(range.end) || range.start > range.end) return
-    if (window && (range.start < window.start || range.end > window.end)) return
+    if (range.start < window.start || range.end > window.end) return
     onCommit(updatePersonalLeave(plan, leave.id, range))
   }
 
@@ -284,7 +283,7 @@ function EditorHeader({ title, range, length, onDeselect }: EditorHeaderProps) {
 
 type DateFieldsProps = {
   range: DayRange
-  window: DayRange | null
+  window: DayRange
   onChange: (range: DayRange) => void
 }
 
@@ -299,7 +298,7 @@ function DateFields({ range, window, onChange }: DateFieldsProps) {
           type="date"
           className={inputClass}
           value={range.start}
-          min={window?.start}
+          min={window.start}
           max={range.end}
           title={formatDayShort(range.start)}
           onChange={(event) => onChange({ start: event.target.value, end: range.end })}
@@ -312,7 +311,7 @@ function DateFields({ range, window, onChange }: DateFieldsProps) {
           className={inputClass}
           value={range.end}
           min={range.start}
-          max={window?.end}
+          max={window.end}
           title={formatDayShort(range.end)}
           onChange={(event) => onChange({ start: range.start, end: event.target.value })}
         />

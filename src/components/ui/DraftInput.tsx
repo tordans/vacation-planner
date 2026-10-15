@@ -6,14 +6,14 @@ type DraftInputProps = Omit<ComponentProps<'input'>, 'value' | 'onChange' | 'onB
   onCommit: (value: string) => void
 }
 
-/** Text input that keeps typing local and commits on blur or Enter (one URL write per edit). */
+/**
+ * Text input that commits every change right away (callers use history `replace`), but keeps
+ * showing what was typed until it loses focus, so the cursor never jumps while the URL updates.
+ * Committing on change instead of on blur means nothing is lost when the input disappears
+ * without a blur, e.g. when a dialog closes with Escape.
+ */
 export function DraftInput({ value, onCommit, className, ...props }: DraftInputProps) {
   const [draft, setDraft] = useState<string | null>(null)
-
-  function commit() {
-    if (draft !== null && draft !== value) onCommit(draft)
-    setDraft(null)
-  }
 
   return (
     <input
@@ -23,8 +23,11 @@ export function DraftInput({ value, onCommit, className, ...props }: DraftInputP
         className,
       )}
       value={draft ?? value}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={commit}
+      onChange={(event) => {
+        setDraft(event.target.value)
+        if (event.target.value !== value) onCommit(event.target.value)
+      }}
+      onBlur={() => setDraft(null)}
       onKeyDown={(event) => {
         if (event.key === 'Enter') event.currentTarget.blur()
       }}

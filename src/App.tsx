@@ -125,7 +125,8 @@ export default function App() {
 
       {lastPlan && !hasPlan && (
         <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-950 ring-1 ring-sky-200">
-          In diesem Browser wurde zuletzt ein Plan mit {formatSavedFull(lastPlan.saved)} bearbeitet.{' '}
+          In diesem Browser wurde zuletzt ein Plan bearbeitet, zuletzt am{' '}
+          {formatSavedFull(lastPlan.saved)}.{' '}
           <button
             type="button"
             className="font-semibold underline underline-offset-2"

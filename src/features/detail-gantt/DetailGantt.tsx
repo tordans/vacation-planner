@@ -12,9 +12,11 @@ import type { Calendar } from '@/features/holidays/periods'
 import { costsLeave, leaveAccount, rangeCost } from '@/features/plan/leave-account'
 import {
   addEntry,
+  ANY_DAY,
   addPersonalLeave,
   blockersFor,
   freeWindow,
+  movableWindow,
   removeEntry,
   removePersonalLeave,
   toggleCarer,
@@ -178,7 +180,7 @@ export function DetailGantt({
     event.currentTarget.closest<HTMLElement>('[role="button"]')?.focus()
     capturePointer(event)
     const limits = { start: minDay(range.start, bar.start), end: maxDay(range.end, bar.end) }
-    const window = freeWindow(blockersFor(plan, { row }, id), bar, limits) ?? bar
+    const window = movableWindow(blockersFor(plan, { row }, id), bar, limits)
     setDrag({
       row,
       mode,
@@ -243,8 +245,7 @@ export function DetailGantt({
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
     event.preventDefault()
     const step = event.key === 'ArrowLeft' ? -1 : 1
-    const limits = { start: '1990-01-01', end: '2100-12-31' }
-    const window = freeWindow(blockersFor(plan, { row }, id), bar, limits) ?? bar
+    const window = movableWindow(blockersFor(plan, { row }, id), bar, ANY_DAY)
     const next = dragPreview(
       event.shiftKey ? 'resize-end' : 'move',
       bar,
