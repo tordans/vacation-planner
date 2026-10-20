@@ -161,8 +161,8 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 # Hand the Authorization header to PHP (FastCGI strips it)
 RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
-# Never serve dotfiles (.htaccess is protected by Apache anyway, this covers the rest)
-RewriteRule (^|/)\. - [F,L]
+# Never serve dotfiles, but keep /.well-known/ open for the Let's Encrypt validation
+RewriteRule (^|/)\.(?!well-known/) - [F,L]
 
 # API: everything under /api to the PHP entry; END stops further rewriting of the result
 RewriteRule ^api(/.*)?$ api/index.php [QSA,END]
@@ -207,6 +207,7 @@ Notes and things to verify on the first deploy:
 - `mod_headers` and `mod_deflate` are wrapped in `<IfModule>` so a missing module does not break
   the site; the deploy check reports whether the cache header arrives.
 - `Referrer-Policy: no-referrer` is an extra guard; the key is in the URL fragment anyway.
+- `/.well-known/` stays reachable: all-inkl's Let's Encrypt renewal may validate through it.
 - Vite builds with `base: '/'` (the existing `PAGES_BASE_PATH` logic is removed).
 - The deploy check requests: `/` (200, HTML, `no-cache`), an existing asset (200, `immutable`),
   `/assets/does-not-exist.js` (404), `/some/path` (200, HTML), `/api/health` (200, JSON with the
