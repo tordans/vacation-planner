@@ -1,144 +1,182 @@
-# Plan: central storage with read and write links
+# Plan: central storage with an admin link and a view link
 
-Status: proposal, not built. Written 2026-10-20.
+Status: proposal, not built. Written 2026-10-20, revised the same day.
 
 ## Goal
 
 Today the whole plan lives in the URL. That works without a server, but every change produces a
 new link, and old links silently show old states. Central storage should give:
 
-- **One stable link per plan** that always shows the latest state.
-- **A read link** to share with the grandparents: they see the plan, they cannot change it.
-- **A write link** to share with the spouse: both edit the same plan.
-- **No user accounts.** Whoever has a link has its access level ("capability links").
+- **One stable plan** on a server that always has the latest state.
+- **An admin link** (edit) for the two parents, so both work on the same plan.
+- **A view link** (read only) for the grandparents.
+- **No user accounts, no third-party login.** Access works only through these two protected links.
+- **Links changed on the server side:** the secrets behind the links are configured as GitHub
+  Actions secrets; changing a secret and redeploying invalidates the old link.
 - **Data on infrastructure we control,** ideally in Germany.
 - **Automated deploy** from GitHub Actions.
 
-The URL-only mode stays as it is. Central storage is an optional "Online speichern" step.
+The URL-only mode stays as a fallback (e.g. for trying things out or exporting a snapshot).
 
-## What already exists
+## Starting point
 
-The all-inkl Privat+ webspace and the planned **key-value-db** service
-(`FMC/key-value-db/.cursor/plans/php_kv_api_on_all-inkl_e659fdf8.plan.md`) cover most of the
-infrastructure:
+- **all-inkl Privat+ webspace** (paid already): PHP 8.4, MariaDB 10.11 (used as MySQL), HTTPS via
+  Let's Encrypt, subdomains, no SSH. Deploy only via FTPS (explicit FTPS on port 21; no SFTP).
+  These facts come from the earlier research in
+  `FMC/key-value-db/.cursor/plans/php_kv_api_on_all-inkl_e659fdf8.plan.md`; nothing was built on
+  all-inkl.
+- **key-value-db** (FixMyBerlin, open source, AGPL) is built and runs as a **Cloudflare Worker
+  with D1** on the company's Cloudflare account. Its access model is built around OpenStreetMap
+  logins and projects with tags, which this app does not need. Reusing it would mean either a
+  private copy of a company project or a second, different access model inside it. It is a useful
+  reference for code and deploy setup (Hono, D1, `wrangler` in GitHub Actions), not a base to
+  extend.
 
-- PHP 8.4 and MariaDB 10.11 (used as MySQL), HTTPS via Let's Encrypt, a subdomain per service.
-- No SSH: deploy via FTPS from GitHub Actions (`SamKirkland/FTP-Deploy-Action` v4.4.0, explicit
-  FTPS on port 21), DB migrations through an authenticated HTTP endpoint, health check after deploy.
-- Projects with origin allowlist, CORS, JSON entries with `version` and `If-Match` conflict check,
-  admin via MCP.
+## What the app needs from a server
 
-What it does **not** have: its write model requires a verified OpenStreetMap login. The planner has
-no login; grandparents and spouse should not need an OSM account.
+Very little: one JSON document (the plan, a few KB), read it, write it, and know whether the
+caller may write.
+
+- `GET /plan` → `{ data, version, updated_at, role: 'admin' | 'viewer' }`
+- `PUT /plan` with `If-Match: "<version>"` → `{ version, updated_at }`, or `409` when someone else
+  saved in the meantime. Only the admin key may write.
+- Every request carries the key from the link as `Authorization: Bearer <key>`. The server compares
+  its SHA-256 hash with the two configured hashes (constant-time) and decides the role. Unknown
+  key → `401`.
+- Optional later: several plans (e.g. a second family) by adding a plan slug to the path and a
+  key pair per plan.
 
 ## Options
 
-|               | A) Extend key-value-db (all-inkl)                 | B) Cloudflare Worker + D1                                  | C) Separate PHP app on all-inkl                      |
-| ------------- | ------------------------------------------------- | ---------------------------------------------------------- | ---------------------------------------------------- |
-| Data location | Germany, own contract                             | Cloudflare (US company), EU residency not verified         | Germany, own contract                                |
-| Cost          | Already paid                                      | Free tier: 100k requests/day, D1 5 GB, 100k row writes/day | Already paid                                         |
-| Build effort  | Small on top of key-value-db: one new access mode | Medium: Worker, D1 schema, token logic                     | Medium: everything key-value-db already plans, again |
-| Deploy        | FTPS workflow from key-value-db                   | `wrangler` in GitHub Actions, clean                        | FTPS, a second workflow to maintain                  |
-| Logs, ops     | Self-written log files                            | Real logs, cron triggers                                   | Self-written log files                               |
-| Dependency    | key-value-db must be built first (Phase 0–1)      | None                                                       | None                                                 |
+|                    | A) Small PHP API on all-inkl                                 | B) Small Worker on your own Cloudflare account                       | C) Reuse key-value-db                 |
+| ------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------- |
+| Data location      | Germany, own contract                                        | Cloudflare (US company), EU residency not verified                   | Company Cloudflare account            |
+| Cost               | Already paid                                                 | Free tier (100k requests/day, D1 5 GB, 100k row writes/day)          | Free, but company resources           |
+| Code to write      | One PHP file plus a small migration, ~150 lines              | One Worker, ~100 lines, TypeScript                                   | New access mode in someone else's API |
+| Deploy             | FTPS from GitHub Actions; config file generated from secrets | `wrangler deploy` from GitHub Actions; secrets via `wrangler secret` | Existing pipeline                     |
+| Changing the links | Change the GitHub secret, rerun the deploy                   | Change the GitHub secret, rerun the deploy                           | Admin tools of key-value-db           |
+| Debugging          | Log file over FTP, no shell                                  | Real logs (`wrangler tail`)                                          | Real logs                             |
+| Backups            | all-inkl's automatic MySQL backups                           | D1 time travel                                                       | D1 time travel                        |
 
 Cloudflare numbers from <https://developers.cloudflare.com/workers/platform/pricing/> (checked
-2026-10-20); a changelog mention of D1 free-plan changes on 2026-09-01 was not confirmed on the
-pricing page.
+2026-10-20).
 
-## Recommendation: A, extend key-value-db with "link documents"
+## Recommendation: A, a small PHP API on all-inkl
 
-Reasons: the data stays in Germany on the contract you already pay for; the hosting, deploy,
-migration and CORS work is planned once in key-value-db and reused; the extra feature is small and
-also useful for other SPAs that want sharing without login. Cloudflare (B) is the fallback if
-key-value-db is not going to be built soon; the API below ports 1:1 to a Worker.
+Reasons: the data stays in Germany on the webspace you already pay for, the server part is tiny
+(one document), and the two keys fit naturally into the deploy as secrets. B is the fallback if the
+FTPS deploy turns out to be painful; the API above ports 1:1 to a Worker. C is not recommended: it
+mixes a private family plan into a company project and needs an access model it does not have.
 
-### Server side (in key-value-db)
+### Server (PHP on all-inkl)
 
-New table, separate from OSM-authenticated `entries`:
+Lives in this repo under `api/` and is deployed to its own subdomain, e.g.
+`urlaub-api.<your-domain>`.
+
+```
+api/
+  public/index.php     # router: GET/PUT /plan, OPTIONS, health
+  public/.htaccess     # HTTPS redirect, pass Authorization header to PHP, rewrite to index.php
+  migrations/0001.sql  # CREATE TABLE plans (...)
+  src/                 # small functions: auth, cors, db, json responses
+```
 
 ```sql
-CREATE TABLE link_docs (
-  pk           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  project_id   INT UNSIGNED NOT NULL,
-  doc_id       CHAR(22) NOT NULL,          -- random, base64url, public part of the link
-  read_hash    CHAR(64) NOT NULL,          -- sha256 of the read token
-  write_hash   CHAR(64) NOT NULL,          -- sha256 of the write token
-  data         JSON NOT NULL,              -- the plan (wire format, uncompressed)
-  version      INT UNSIGNED NOT NULL DEFAULT 1,
-  created_at   DATETIME(3) NOT NULL,
-  updated_at   DATETIME(3) NOT NULL,
-  UNIQUE KEY uq_project_doc (project_id, doc_id),
-  CONSTRAINT fk_docs_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+CREATE TABLE plans (
+  slug        VARCHAR(64) PRIMARY KEY,   -- 'default' for now
+  data        JSON NOT NULL,
+  version     INT UNSIGNED NOT NULL DEFAULT 1,
+  updated_at  DATETIME(3) NOT NULL
 );
 ```
 
-Endpoints (project key + origin check as for all `/v1/projects/*` requests):
+- `config.php` sits **outside** the document root and is generated in the deploy job from GitHub
+  secrets. It contains the DB credentials and the **SHA-256 hashes** of the admin key and the view
+  key, never the keys themselves.
+- CORS allows only `https://tordans.github.io` and `http://localhost:*`. Responses use
+  `Cache-Control: no-store`. Request body limit 64 KiB. Simple rate limit per IP for failed keys.
+- A one-time migration endpoint protected by a separate deploy key runs `0001.sql` after the
+  first upload; afterwards the deploy job calls it on every run (idempotent).
+- `GET /health` returns `{ ok, commit }`; the deploy job checks it to confirm the new version is
+  live.
 
-- `POST /v1/projects/{slug}/docs` body `{ data }` → `201 { id, version, read_token, write_token }`.
-  Tokens are 128-bit random, returned once, stored only as hashes. Rate limit per IP (e.g. 20/h).
-- `GET /v1/projects/{slug}/docs/{id}` with `Authorization: Bearer <read or write token>` →
-  `{ data, version, updated_at, can_write }`, `ETag: "<version>"`.
-- `PUT /v1/projects/{slug}/docs/{id}` with the write token and `If-Match: "<version>"` →
-  `200 { version, updated_at }`, or `409 version_conflict` with the current version.
-- `POST /v1/projects/{slug}/docs/{id}/rotate` with the write token → new read and/or write token
-  (revokes links that leaked).
-- `DELETE /v1/projects/{slug}/docs/{id}` with the write token.
+### Secrets and link rotation
 
-Limits: `data` ≤ 64 KiB; constant-time hash compare; `Cache-Control: no-store`; HTTPS only.
+GitHub environment `all-inkl` holds:
 
-### Client side (vacation planner)
+| Secret                                         | Purpose                                                     |
+| ---------------------------------------------- | ----------------------------------------------------------- |
+| `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`   | FTPS upload (dedicated, jailed FTP user for the API folder) |
+| `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | MySQL database created once in KAS                          |
+| `PLAN_ADMIN_KEY`                               | Secret behind the admin link (random, ≥ 32 characters)      |
+| `PLAN_VIEW_KEY`                                | Secret behind the view link                                 |
+| `DEPLOY_KEY`                                   | Protects the migration endpoint                             |
 
-- **Links.** Online plans use `?doc=<id>#w=<write token>` (write) and `?doc=<id>#r=<read token>`
-  (read). The token sits in the URL fragment, so it never reaches GitHub Pages' server logs or the
-  `Referer` header; only the app's own API request carries it.
-- **"Online speichern"** in the header: creates the doc from the current URL plan, switches to the
-  write link and shows both links to copy ("Zum Ansehen" / "Zum Mitplanen").
-- **Write view:** every commit updates local state immediately and saves to the API after a short
-  pause (about 1 s, debounced) with `If-Match`. Status in the header: "Gespeichert 14:32",
-  "Speichert …", "Offline – Änderungen noch nicht gespeichert".
-- **Conflicts:** on `409` the app loads the newer version and shows "Inzwischen von jemand anderem
-  geändert – deine letzte Änderung wurde nicht gespeichert"; the overwritten change stays available
-  to re-apply via a "Meine Version trotzdem speichern" button. No merging in v1.
-- **Updates from others:** refetch on window focus and every 60 s (TanStack Query
-  `refetchInterval`), so the spouse and the grandparents see changes without reloading.
-- **Read view:** same views, but no drag, no editor panel, no settings or "Anpassen" buttons; a
-  small badge "Nur ansehen".
-- **`saved` timestamp:** in online mode the header shows the server's `updated_at`; the link no
-  longer needs it because it always shows the latest state.
-- **Local mode stays:** without `doc` everything works as today. "Als Link ohne Server
-  exportieren" turns an online plan back into a URL-only link.
-- **Info texts:** the "Gut zu wissen" topics on storage, external services and keeping the link
-  are rewritten for both modes (data on the all-inkl server in Germany, who can read it, how to
-  revoke links).
+- The deploy job hashes `PLAN_ADMIN_KEY` and `PLAN_VIEW_KEY` and writes the hashes into
+  `config.php`.
+- **To revoke a link:** generate a new value, update the secret in GitHub, rerun the workflow
+  ("Run workflow" button). The old link stops working immediately after the deploy; send the new
+  link to whoever should keep access.
+- The links themselves are built by hand once:
+  `https://tordans.github.io/vacation-planner/#key=<PLAN_ADMIN_KEY>` and the same with
+  `PLAN_VIEW_KEY`. The key sits in the URL fragment (`#`), so it never reaches GitHub Pages' server
+  logs or the `Referer` header; only the app's own API request carries it.
 
-### Deploy
+### Deploy workflow (GitHub Actions)
 
-- key-value-db deploys itself (its own FTPS workflow); the planner project is created there via the
-  MCP admin tools with origins `https://tordans.github.io` and `http://localhost:*`.
-- The planner stays on GitHub Pages. The API base URL and the public project key are build-time
-  env vars (`VITE_KV_URL`, `VITE_KV_PROJECT_KEY`) set as repository variables in GitHub Actions.
+1. On push to `main` with changes under `api/` (and manually via "Run workflow"):
+   `php -l` on all files.
+2. Generate `config.php` from the secrets.
+3. Upload with `SamKirkland/FTP-Deploy-Action@v4.4.0`, `protocol: ftps`, port 21, incremental
+   sync, never "clean slate"; `config.php` goes to the folder above the document root.
+4. Call the migration endpoint with `DEPLOY_KEY`.
+5. Call `/health` and compare the reported commit with `github.sha`; fail the job otherwise.
+
+The frontend keeps deploying to GitHub Pages as today. The API URL is a build-time variable
+(`VITE_PLAN_API_URL`), set as a repository variable.
+
+Alternative worth considering: also serve the frontend from all-inkl (same upload, different
+folder). Then everything is on one host, no CORS, and the app is not on a public `github.io`
+address. Downside: the GitHub Pages deploy we have today would be replaced by FTPS.
+
+### App (vacation planner)
+
+- **Opening `#key=…`:** the app loads the plan from the API, keeps the key in memory and in
+  `sessionStorage` for reloads, and removes it from the address bar so it is not copied by
+  accident. The role decides the view.
+- **Admin view:** everything as today. Each change updates the screen at once and is saved to the
+  API after about one second, with `If-Match`. Header status: "Gespeichert 14:32", "Speichert …",
+  "Nicht gespeichert – keine Verbindung".
+- **Conflicts:** on `409` the app loads the newer plan and shows "Inzwischen von jemand anderem
+  geändert"; your last change can be applied again with one click. No automatic merging in v1.
+- **Updates from others:** reload on window focus and every 60 seconds, so both parents and the
+  grandparents see the latest state.
+- **View role:** the same views without drag, editor, settings and "Anpassen"; a badge
+  "Nur ansehen".
+- **URL mode stays:** without `#key` the app works as today. Admins get "Als Link ohne Server
+  exportieren" (snapshot in the URL) and, once, "Diesen Link-Plan auf den Server übernehmen".
+- **Info texts:** "Gut zu wissen" explains both modes: where the data lives (all-inkl, Germany),
+  who can read it (whoever has one of the two links), how links are changed.
 
 ### Phases
 
-1. key-value-db Phase 0–1 (as planned there), plus `link_docs` and its endpoints with tests.
-2. Planner: API client, "Online speichern", write view with autosave and conflict handling.
-3. Planner: read view, token rotation, info texts, README.
+1. API: PHP endpoints, migration, CORS, tests against a local PHP + MariaDB (Docker), deploy
+   workflow with a dry run, first deploy and health check.
+2. App: API client, opening `#key`, admin view with autosave and conflict handling.
+3. App: view role, info texts, README; generate the two links and share them.
 
 ## Open questions
 
-1. Extend key-value-db (recommended) or build a separate small PHP app just for the planner?
-2. Is the token in the URL fragment (`#w=…`) acceptable, knowing that anyone with the full link
-   has that access until the link is rotated?
-3. Conflicts: is "last save wins, with a warning and the option to save mine anyway" enough, or do
-   you want a lock ("Tobias bearbeitet gerade")?
-4. Read view for the grandparents: the full app read-only (recommended), or a simpler page with
-   just the year overview and the list?
-5. Should online plans expire or be deleted after some time without access, or keep forever?
+1. Is one plan enough, or should the server hold several plans from the start (e.g. per family)?
+2. Frontend: stay on GitHub Pages (as today) or move it to all-inkl together with the API?
+3. Conflicts: is "last save wins, with a notice and one click to re-apply mine" enough, or should
+   there be a lock ("Tobias bearbeitet gerade")?
+4. Should the view link show everything, or hide parts such as notes and the leave accounts?
 
 ## Risks
 
-- Capability links leak through chat history, screenshots and forwarded messages; rotation is the
-  only remedy, so the UI must make it easy.
-- all-inkl FTPS deploys and the missing SSH make debugging slower than on Cloudflare.
-- key-value-db is not built yet; this feature depends on it.
+- Whoever has a link has its access until the key is changed; the links must not be posted in
+  public places. Changing a key is quick, but every holder needs the new link.
+- all-inkl has no SSH; debugging relies on our own log file and the health check.
+- Free-form FTPS deploys can leave half-uploaded states if a run is interrupted; the health check
+  with the commit hash makes that visible.
