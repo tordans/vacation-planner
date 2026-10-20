@@ -1,6 +1,14 @@
+import { Fragment } from 'react'
 import { Tooltip } from '@/components/ui/tooltip'
-import type { Calendar } from '@/features/holidays/periods'
-import { carerLabel, parentLabel, PARENT_ROLES, type Plan } from '@/features/plan/plan-schema'
+import { federalStateByCode } from '@/features/holidays/federal-states'
+import type { Calendar, Period } from '@/features/holidays/periods'
+import {
+  carerLabel,
+  parentLabel,
+  PARENT_ROLES,
+  type Household,
+  type Plan,
+} from '@/features/plan/plan-schema'
 import { CARER_STYLES, STAY_STYLES, stayTitle } from '@/features/plan/styles'
 import { cn } from '@/lib/cn'
 import {
@@ -20,6 +28,10 @@ type MonthBlockProps = {
   month: number
   plan: Plan
   calendar: Calendar
+  /** Other households to mark; empty when they are hidden. */
+  households: Household[]
+  /** School holidays per federal state code of the households. */
+  householdHolidays: Map<string, Period[]>
   gaps: Set<IsoDay>
   today: IsoDay
   onOpenDay: (day: IsoDay) => void
@@ -29,6 +41,29 @@ type MonthBlockProps = {
 /** The past is done: faded until the month card is hovered or focused. */
 const PAST_CLASS =
   'opacity-40 grayscale transition duration-150 group-hover/month:opacity-100 group-hover/month:grayscale-0 group-focus-within/month:opacity-100 group-focus-within/month:grayscale-0 motion-reduce:transition-none print:opacity-100 print:grayscale-0'
+
+/** One thin line per household at the top edge of a day, from the first household down. */
+const HOUSEHOLD_LINE_TOP = ['top-0.5', 'top-1.5', 'top-2.5'] as const
+
+function holidayOn(day: IsoDay, household: Household, householdHolidays: Map<string, Period[]>) {
+  if (!household.federalState) return undefined
+  return householdHolidays
+    .get(household.federalState)
+    ?.find((period) => period.start <= day && period.end >= day)
+}
+
+function householdsOn(
+  day: IsoDay,
+  households: Household[],
+  householdHolidays: Map<string, Period[]>,
+) {
+  return households.map((household, index) => ({
+    household,
+    index,
+    holiday: holidayOn(day, household, householdHolidays),
+    absence: household.absences.find((absence) => absence.start <= day && absence.end >= day),
+  }))
+}
 
 function monthDays(year: number, month: number) {
   const prefix = `${year}-${String(month + 1).padStart(2, '0')}-`
@@ -43,6 +78,8 @@ export function MonthBlock({
   month,
   plan,
   calendar,
+  households,
+  householdHolidays,
   gaps,
   today,
   onOpenDay,
@@ -115,6 +152,8 @@ export function MonthBlock({
                   day={day}
                   plan={plan}
                   calendar={calendar}
+                  households={households}
+                  householdHolidays={householdHolidays}
                   isGap={gaps.has(day)}
                   isToday={day === today}
                   isPast={day < today}
@@ -133,13 +172,25 @@ type DayCellProps = {
   day: IsoDay
   plan: Plan
   calendar: Calendar
+  households: Household[]
+  householdHolidays: Map<string, Period[]>
   isGap: boolean
   isToday: boolean
   isPast: boolean
   onOpen: (day: IsoDay) => void
 }
 
-function DayCell({ day, plan, calendar, isGap, isToday, isPast, onOpen }: DayCellProps) {
+function DayCell({
+  day,
+  plan,
+  calendar,
+  households,
+  householdHolidays,
+  isGap,
+  isToday,
+  isPast,
+  onOpen,
+}: DayCellProps) {
   const info = calendar.days.get(day)
   const isWeekend = isoWeekday(day) > 5
   const entry = plan.entries.find((candidate) => candidate.start <= day && candidate.end >= day)
@@ -147,6 +198,7 @@ function DayCell({ day, plan, calendar, isGap, isToday, isPast, onOpen }: DayCel
     (candidate) => candidate.start <= day && candidate.end >= day,
   )
   const onLeave = PARENT_ROLES.filter((role) => leaves.some((leave) => leave.parent === role))
+  const others = householdsOn(day, households, householdHolidays)
 
   return (
     <Tooltip
@@ -173,6 +225,22 @@ function DayCell({ day, plan, calendar, isGap, isToday, isPast, onOpen }: DayCel
             <span key={leave.id} className="block text-fuchsia-200">
               {parentLabel(plan, leave.parent)}: {stayTitle(leave)} (eigener Urlaub)
             </span>
+          ))}
+          {others.map(({ household, holiday, absence }) => (
+            <Fragment key={household.id}>
+              {holiday && household.federalState && (
+                <span className="block text-zinc-300">
+                  {household.name}: {holiday.name} (
+                  {federalStateByCode(household.federalState).name})
+                </span>
+              )}
+              {absence && (
+                <span className="block text-zinc-300">
+                  {household.name}: nicht zu Hause
+                  {absence.place && ` (${absence.place})`}
+                </span>
+              )}
+            </Fragment>
           ))}
           {isGap && <span className="block text-red-300">Noch nicht geplant</span>}
         </>
@@ -201,6 +269,21 @@ function DayCell({ day, plan, calendar, isGap, isToday, isPast, onOpen }: DayCel
             ))}
           </span>
         )}
+        {others
+          .slice(0, HOUSEHOLD_LINE_TOP.length)
+          .map(({ household, index, holiday, absence }) =>
+            absence || holiday ? (
+              <span
+                key={household.id}
+                aria-hidden
+                className={cn(
+                  'absolute inset-x-3 rounded-full',
+                  HOUSEHOLD_LINE_TOP[index],
+                  absence ? 'h-1 bg-zinc-700' : 'h-0.5 bg-zinc-400',
+                )}
+              />
+            ) : null,
+          )}
         {isGap && <span className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-red-500" />}
         {entry && (
           <span

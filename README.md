@@ -18,6 +18,10 @@ app title, so an old bookmark is recognisable as old.
   to create a period, drag a bar to move it, drag its ends to resize it. Click a parent's or the
   grandparents' row to set who takes care. Drag in a parent's row for leave they take on their own.
   Keyboard: arrows move, Shift+arrows resize, Delete removes.
+- **Other households** (grandparents, cousins) are information only: add a name and optionally a
+  federal state to see its school holidays, and enter when they are not at home, in grey bars in
+  their row. They never need care, cost no leave and create no unplanned days. Hide the rows with
+  the "Andere Haushalte" switch.
 - **Leave days** are only charged on a parent's working days that are not public holidays, so a
   four-day week or a bridge day on a day off is accounted for correctly.
 - **Holidays** come from [mehr-schulferien.de](https://www.mehr-schulferien.de) for the selected
@@ -27,13 +31,14 @@ app title, so an old bookmark is recognisable as old.
 
 ## URL parameters
 
-| Param   | Example            | Purpose                                                 |
-| ------- | ------------------ | ------------------------------------------------------- |
-| `year`  | `2027`             | Selected year, defaults to the current year             |
-| `from`  | `2027-06-24`       | Detail view start; `from` and `to` open the detail view |
-| `to`    | `2027-08-21`       | Detail view end                                         |
-| `saved` | `2026-10-06T14:32` | Last change of the plan, Europe/Berlin, plain text      |
-| `plan`  | `N4Ig…`            | The plan, LZ-compressed JSON (`src/features/plan`)      |
+| Param    | Example            | Purpose                                                 |
+| -------- | ------------------ | ------------------------------------------------------- |
+| `year`   | `2027`             | Selected year, defaults to the current year             |
+| `from`   | `2027-06-24`       | Detail view start; `from` and `to` open the detail view |
+| `to`     | `2027-08-21`       | Detail view end                                         |
+| `saved`  | `2026-10-06T14:32` | Last change of the plan, Europe/Berlin, plain text      |
+| `plan`   | `N4Ig…`            | The plan, LZ-compressed JSON (`src/features/plan`)      |
+| `others` | `hide`             | Hides the other households' rows; absent means shown    |
 
 ## Development
 

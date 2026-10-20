@@ -382,3 +382,27 @@ Milestones 1–8 are implemented. Where the build deviates from the sections abo
 3. **Half days and carry-over leave** (Resturlaub from the previous year) — assumed out of scope
    for v1; the per-year budget can simply be entered including carry-over.
 4. **UI language** — assumed German only.
+
+## 12. Other households (2026-10-20)
+
+Information-only layer next to the family's own plan, decided with the user:
+
+- **One concept, "Andere Haushalte":** e.g. "Oma & Opa", "Cousinen". Each has a name, an optional
+  federal state (its school holidays are loaded like the family's own and shown as info) and
+  absences ("nicht zu Hause", with place and note).
+- **Information only:** never needs care, never costs leave, never creates or closes red
+  "unplanned" markers, no corrections of their holidays.
+- **Detail timeline:** a section "Andere Haushalte" below the grandparents row; per household a
+  row with the state's school holidays as a light band and absences as grey bars, created, moved
+  and resized like the parents' own leave.
+- **Year overview:** subtle lines at the top of each day cell (light: their school holidays, dark:
+  they are away), details in the day tooltip, and a list block "Andere Haushalte {year}".
+- **Switch:** "Andere Haushalte" hides the layer everywhere; stored in the link as `others=hide`.
+- **Managing:** a dialog "Andere Haushalte" (name, federal state, absences); opened from the list
+  block and from the household labels in the timeline.
+- **Link format:** optional `o` array in the plan (`[name, state code or '', [[start, end, place,
+note], …]]`), so older links keep working.
+
+## 13. Central storage
+
+Proposal with read and write links, see [docs/central-storage-plan.md](docs/central-storage-plan.md).

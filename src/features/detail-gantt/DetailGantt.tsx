@@ -8,7 +8,8 @@ import {
 import { useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
 import { DateRangeDisplay } from '@/components/ui/DateDisplay'
 import { Tooltip } from '@/components/ui/tooltip'
-import type { Calendar } from '@/features/holidays/periods'
+import { federalStateByCode } from '@/features/holidays/federal-states'
+import type { Calendar, Period } from '@/features/holidays/periods'
 import { costsLeave, leaveAccount, rangeCost } from '@/features/plan/leave-account'
 import {
   addEntry,
@@ -19,6 +20,10 @@ import {
   movableWindow,
   removeEntry,
   removePersonalLeave,
+  addAbsence,
+  isHouseholdId,
+  removeAbsence,
+  updateAbsence,
   toggleCarer,
   updateEntry,
   updatePersonalLeave,
@@ -28,6 +33,7 @@ import {
   carerLabel,
   PARENT_ROLES,
   parentLabel,
+  type HouseholdId,
   type ParentRole,
   type Plan,
 } from '@/features/plan/plan-schema'
@@ -62,7 +68,30 @@ import {
 import { GanttBar } from './GanttBar'
 import { GanttEditor, type Selection } from './GanttEditor'
 
-type EditableRow = 'family' | ParentRole
+type EditableRow = 'family' | ParentRole | HouseholdId
+
+function selectionType(row: EditableRow): Selection['type'] {
+  if (row === 'family') return 'family'
+  return isHouseholdId(row) ? 'absence' : 'personal'
+}
+
+function addOn(plan: Plan, row: EditableRow, period: DayRange) {
+  if (row === 'family') return addEntry(plan, period)
+  if (isHouseholdId(row)) return addAbsence(plan, row, period)
+  return addPersonalLeave(plan, row, period)
+}
+
+function updateOn(plan: Plan, row: EditableRow, id: string, period: DayRange) {
+  if (row === 'family') return updateEntry(plan, id, period)
+  if (isHouseholdId(row)) return updateAbsence(plan, id, period)
+  return updatePersonalLeave(plan, id, period)
+}
+
+function removeOn(plan: Plan, row: EditableRow, id: string) {
+  if (row === 'family') return removeEntry(plan, id)
+  if (isHouseholdId(row)) return removeAbsence(plan, id)
+  return removePersonalLeave(plan, id)
+}
 
 type Drag = {
   row: EditableRow
@@ -83,6 +112,11 @@ type DetailGanttProps = {
   onCommit: (plan: Plan, history?: 'push' | 'replace') => void
   onChangeRange: (range: DayRange, history?: 'push' | 'replace') => void
   onClose: () => void
+  /** Show the other households (information only). */
+  showOthers: boolean
+  /** School holidays per federal state code, for the other households. */
+  householdHolidays: Map<string, Period[]>
+  onEditHouseholds: () => void
 }
 
 const rowClass = 'relative h-11 border-t border-zinc-200'
@@ -103,6 +137,9 @@ export function DetailGantt({
   onCommit,
   onChangeRange,
   onClose,
+  showOthers,
+  householdHolidays,
+  onEditHouseholds,
 }: DetailGanttProps) {
   const now = useNow()
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX)
@@ -131,9 +168,9 @@ export function DetailGantt({
   }
 
   function createAt(row: EditableRow, period: DayRange) {
-    const result = row === 'family' ? addEntry(plan, period) : addPersonalLeave(plan, row, period)
+    const result = addOn(plan, row, period)
     onCommit(result.plan)
-    setSelection({ type: row === 'family' ? 'family' : 'personal', id: result.id })
+    setSelection({ type: selectionType(row), id: result.id })
   }
 
   function startCreate(row: EditableRow, event: PointerEvent<HTMLDivElement>) {
@@ -213,14 +250,10 @@ export function DetailGantt({
       createAt(drag.row, drag.preview)
       return
     }
-    setSelection({ type: drag.row === 'family' ? 'family' : 'personal', id: drag.id })
+    setSelection({ type: selectionType(drag.row), id: drag.id })
     const changed = drag.preview.start !== drag.origin.start || drag.preview.end !== drag.origin.end
     if (!changed) return
-    onCommit(
-      drag.row === 'family'
-        ? updateEntry(plan, drag.id, drag.preview)
-        : updatePersonalLeave(plan, drag.id, drag.preview),
-    )
+    onCommit(updateOn(plan, drag.row, drag.id, drag.preview))
   }
 
   /** Arrow keys move, Shift+arrow resizes the end, Delete removes: the alternative to dragging. */
@@ -230,7 +263,7 @@ export function DetailGantt({
     bar: DayRange,
     event: KeyboardEvent<HTMLDivElement>,
   ) {
-    const type = row === 'family' ? 'family' : 'personal'
+    const type = selectionType(row)
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       setSelection({ type, id })
@@ -239,7 +272,7 @@ export function DetailGantt({
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault()
       setSelection(null)
-      onCommit(row === 'family' ? removeEntry(plan, id) : removePersonalLeave(plan, id))
+      onCommit(removeOn(plan, row, id))
       return
     }
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -255,10 +288,7 @@ export function DetailGantt({
     )
     if (next.start === bar.start && next.end === bar.end) return
     setSelection({ type, id })
-    onCommit(
-      row === 'family' ? updateEntry(plan, id, next) : updatePersonalLeave(plan, id, next),
-      'replace',
-    )
+    onCommit(updateOn(plan, row, id, next), 'replace')
   }
 
   function shown(row: EditableRow, id: string, bar: DayRange) {
@@ -399,6 +429,31 @@ export function DetailGantt({
             <span className={cn('size-2 shrink-0 rounded-full', CARER_STYLES.grandparents.dot)} />
             Großeltern
           </div>
+          {showOthers && plan.households.length > 0 && (
+            <>
+              <div className="flex h-7 items-center border-t border-zinc-200 px-3 text-[0.625rem] font-semibold tracking-wide text-zinc-500 uppercase">
+                Andere Haushalte
+              </div>
+              {plan.households.map((household) => (
+                <button
+                  key={household.id}
+                  type="button"
+                  className={cn(
+                    labelClass,
+                    'w-full flex-col items-start justify-center gap-0 text-left leading-tight text-zinc-600 hover:bg-zinc-100',
+                  )}
+                  onClick={onEditHouseholds}
+                >
+                  <span className="w-full truncate">{household.name || 'Haushalt'}</span>
+                  {household.federalState && (
+                    <span className="text-[0.625rem] font-normal text-zinc-500">
+                      Ferien {federalStateByCode(household.federalState).name}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </>
+          )}
         </div>
 
         <div
@@ -664,6 +719,66 @@ export function DetailGantt({
                 />
               ))}
             </div>
+
+            {/* Other households: information only, never needs care or leave */}
+            {showOthers && plan.households.length > 0 && (
+              <>
+                <div className="relative h-7 border-t border-zinc-200 bg-zinc-50/80" />
+                {plan.households.map((household) => (
+                  <div
+                    key={household.id}
+                    className={cn(rowClass, 'cursor-crosshair')}
+                    onPointerDown={(event) => startCreate(household.id, event)}
+                    onClick={(event) => handleRowClick(household.id, event)}
+                  >
+                    {(household.federalState
+                      ? (householdHolidays.get(household.federalState) ?? [])
+                      : []
+                    ).map((period) => {
+                      const box = boxFor(scale, period)
+                      if (!box) return null
+                      return (
+                        <div
+                          key={`${period.start}-${period.name}`}
+                          className="pointer-events-none absolute inset-y-0 flex items-start overflow-hidden border-x border-amber-300/70 bg-amber-100/60 px-1.5 pt-0.5 text-[0.625rem] font-medium whitespace-nowrap text-amber-900/80"
+                          style={{ left: box.left, width: box.width }}
+                        >
+                          {period.name}
+                        </div>
+                      )
+                    })}
+                    {household.absences.map((absence) => {
+                      const period = shown(household.id, absence.id, absence)
+                      const box = boxFor(scale, period)
+                      if (!box) return null
+                      const title = absence.place.trim() || 'Nicht zu Hause'
+                      return (
+                        <GanttBar
+                          key={absence.id}
+                          box={box}
+                          className="top-3.5 bg-zinc-500"
+                          isSelected={selection?.type === 'absence' && selection.id === absence.id}
+                          ariaLabel={`${household.name}: ${title}, ${formatDayRange(period.start, period.end)}`}
+                          label={title}
+                          tooltip={
+                            <>
+                              <span className="block">
+                                {household.name || 'Haushalt'} nicht zu Hause
+                              </span>
+                              <span className="block font-normal text-zinc-300">
+                                {title} · {formatDayRange(period.start, period.end)}
+                              </span>
+                            </>
+                          }
+                          {...barHandlers(household.id, absence.id, absence)}
+                        />
+                      )
+                    })}
+                    {ghost(household.id)}
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         </div>
       </div>

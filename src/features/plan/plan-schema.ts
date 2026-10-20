@@ -62,6 +62,32 @@ export type CalendarAdjustment = {
   replacement: CustomDay | null
 }
 
+/** A period another household is away from home, e.g. the cousins on holiday. */
+export type Absence = {
+  /** `h0a2`: absence 2 of household 0 */
+  id: string
+  start: IsoDay
+  end: IsoDay
+  place: string
+  note: string
+}
+
+/**
+ * Another household we want to see next to our plan, for information only: the grandparents,
+ * the cousins. Its school holidays (when a federal state is set) and absences never need care
+ * and never cost leave.
+ */
+export type Household = {
+  /** `h0`, positional like all ids */
+  id: HouseholdId
+  name: string
+  /** Federal state code whose school holidays are shown, or null for none. */
+  federalState: string | null
+  absences: Absence[]
+}
+
+export type HouseholdId = `h${number}`
+
 export type Plan = {
   federalState: string
   parents: Record<ParentRole, Parent>
@@ -69,6 +95,7 @@ export type Plan = {
   personalLeave: PersonalLeave[]
   customDays: CustomDay[]
   adjustments: CalendarAdjustment[]
+  households: Household[]
 }
 
 export const PARENT_LABELS: Record<ParentRole, string> = {
@@ -106,6 +133,7 @@ export function emptyPlan(): Plan {
     personalLeave: [],
     customDays: [],
     adjustments: [],
+    households: [],
   }
 }
 
@@ -164,6 +192,16 @@ export const wirePlanSchema = z.object({
         isoDaySchema,
         isoDaySchema,
         z.string(),
+      ]),
+    )
+    .optional(),
+  /** Other households: [name, federal state code or '', [[start, end, place, note], …]] */
+  o: z
+    .array(
+      z.tuple([
+        z.string(),
+        z.string(),
+        z.array(z.tuple([isoDaySchema, isoDaySchema, z.string(), z.string()])),
       ]),
     )
     .optional(),

@@ -79,6 +79,20 @@ function toWire(plan: Plan): WirePlan {
           }),
         }
       : {}),
+    ...(plan.households.length > 0
+      ? {
+          o: plan.households.map(
+            (household) =>
+              [
+                household.name,
+                household.federalState ?? '',
+                household.absences.map(
+                  (absence) => [absence.start, absence.end, absence.place, absence.note] as const,
+                ),
+              ] as const,
+          ),
+        }
+      : {}),
   }
 }
 
@@ -121,6 +135,20 @@ function fromWire(wire: WirePlan): Plan {
       replacement:
         removed === 1 || newStart > newEnd ? null : { name, start: newStart, end: newEnd },
     })),
+    households: (wire.o ?? []).map(([name, federalState, absences], index) => ({
+      id: `h${index}` as const,
+      name,
+      federalState: federalState || null,
+      absences: absences
+        .filter(([start, end]) => start <= end)
+        .map(([start, end, place, note], absenceIndex) => ({
+          id: `h${index}a${absenceIndex}`,
+          start,
+          end,
+          place,
+          note,
+        })),
+    })),
   }
 }
 
@@ -130,6 +158,14 @@ export function withFreshIds(plan: Plan): Plan {
     ...plan,
     entries: plan.entries.map((entry, index) => ({ ...entry, id: `e${index}` })),
     personalLeave: plan.personalLeave.map((leave, index) => ({ ...leave, id: `x${index}` })),
+    households: plan.households.map((household, index) => ({
+      ...household,
+      id: `h${index}` as const,
+      absences: household.absences.map((absence, absenceIndex) => ({
+        ...absence,
+        id: `h${index}a${absenceIndex}`,
+      })),
+    })),
   }
 }
 

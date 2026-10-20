@@ -2,16 +2,21 @@ import { describe, expect, it } from 'vitest'
 import { coverageGaps } from '@/features/plan/coverage-gaps'
 import { leaveAccount, rangeCost } from '@/features/plan/leave-account'
 import {
+  addAbsence,
   addCustomDay,
+  addHousehold,
   addEntry,
   addPersonalLeave,
   adjustHoliday,
   blockersFor,
   freeWindow,
   movableWindow,
+  removeAbsence,
+  removeHousehold,
   removeEntry,
   splitEntry,
   toggleCarer,
+  updateAbsence,
   updateEntry,
 } from '@/features/plan/plan-actions'
 import { emptyPlan } from '@/features/plan/plan-schema'
@@ -199,5 +204,43 @@ describe('plan actions', () => {
     const { plan } = planWithEntry('2027-07-12', '2027-07-16', { carers: ['mother'] })
     expect(blockersFor(plan, { row: 'mother' })).toHaveLength(1)
     expect(blockersFor(plan, { row: 'father' })).toHaveLength(0)
+  })
+})
+
+describe('other households', () => {
+  it('round-trip through the link with their absences', () => {
+    let plan = familyPlan()
+    const grandparents = addHousehold(plan, { name: 'Oma & Opa', federalState: 'BY' })
+    plan = grandparents.plan
+    plan = addHousehold(plan, { name: 'Cousinen', federalState: null }).plan
+    const absence = addAbsence(plan, grandparents.id, { start: '2027-08-02', end: '2027-08-20' })
+    plan = updateAbsence(absence.plan, absence.id, { place: 'Kur' })
+    const decoded = decodePlan(encodePlan(plan))
+    expect(decoded).toEqual(plan)
+    expect(decoded.households[0]?.absences[0]).toMatchObject({ id: 'h0a0', place: 'Kur' })
+  })
+
+  it('keep ids positional when one is removed', () => {
+    let plan = addHousehold(familyPlan(), { name: 'A', federalState: null }).plan
+    plan = addHousehold(plan, { name: 'B', federalState: null }).plan
+    plan = addAbsence(plan, 'h1', { start: '2027-01-04', end: '2027-01-08' }).plan
+    plan = removeHousehold(plan, 'h0')
+    expect(plan.households).toMatchObject([{ id: 'h0', name: 'B', absences: [{ id: 'h0a0' }] }])
+    expect(removeAbsence(plan, 'h0a0').households[0]?.absences).toEqual([])
+  })
+
+  it('never block the family or the parents, only their own absences', () => {
+    let plan = addHousehold(familyPlan(), { name: 'A', federalState: null }).plan
+    plan = addAbsence(plan, 'h0', { start: '2027-07-01', end: '2027-07-10' }).plan
+    expect(blockersFor(plan, { row: 'h0' })).toHaveLength(1)
+    expect(blockersFor(plan, { row: 'h0' }, 'h0a0')).toHaveLength(0)
+    expect(blockersFor(plan, { row: 'family' })).toHaveLength(0)
+  })
+
+  it('cost no leave and close no gaps', () => {
+    let plan = addHousehold(familyPlan(), { name: 'A', federalState: 'BE' }).plan
+    plan = addAbsence(plan, 'h0', { start: '2027-07-01', end: '2027-08-14' }).plan
+    expect(leaveAccount(plan, 'mother', 2027, berlin2027).planned).toBe(0)
+    expect(coverageGaps(plan, 2027, berlin2027, '2027-01-01').has('2027-07-01')).toBe(true)
   })
 })

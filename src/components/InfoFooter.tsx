@@ -89,8 +89,9 @@ export function InfoFooter() {
             <p>
               <strong className="font-semibold text-zinc-900">Im Link:</strong> der gesamte Plan,
               also Bundesland, Namen, Arbeitstage und Urlaubstage der Eltern, alle Zeiträume mit
-              Ort, Notiz und Betreuung sowie deine Anpassungen an Ferien und Feiertagen. Der Plan
-              wird an keinen Server geschickt und dort nicht gespeichert.
+              Ort, Notiz und Betreuung, deine Anpassungen an Ferien und Feiertagen sowie andere
+              Haushalte mit ihren Abwesenheiten. Der Plan wird an keinen Server geschickt und dort
+              nicht gespeichert.
             </p>
             <p>
               <strong className="font-semibold text-zinc-900">In deinem Browser:</strong> zwei
@@ -176,6 +177,24 @@ export function InfoFooter() {
               Ein roter Punkt markiert einen schulfreien Wochentag, für den noch niemand als
               Betreuung eingetragen ist. Das gilt auch für Zeiträume, bei denen die Betreuung noch
               offen ist. Tage in der Vergangenheit werden nicht mehr markiert.
+            </p>
+          </Topic>
+
+          <Topic title="Was sind andere Haushalte?">
+            <p>
+              Du kannst weitere Haushalte anlegen, zum Beispiel Oma & Opa oder die Cousinen. Mit
+              einem Bundesland erscheinen deren Schulferien als Information in ihrer Zeile.
+            </p>
+            <p>
+              Außerdem trägst du ein, wann sie nicht zu Hause sind. So siehst du, wann ein Besuch
+              sich lohnt.
+            </p>
+            <p>
+              Das ist nur Information: Andere Haushalte brauchen keine Betreuung, kosten keine
+              Urlaubstage und erzeugen keine roten Punkte. Über den Schalter „Andere Haushalte“
+              lassen sie sich ausblenden; der Link trägt dann{' '}
+              <code className="rounded-sm bg-zinc-100 px-1 py-0.5 text-xs">others=hide</code>. Wie
+              alles andere steckt auch diese Angabe im Link.
             </p>
           </Topic>
 

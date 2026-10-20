@@ -4,6 +4,8 @@ import type {
   Carer,
   CustomDay,
   FamilyEntry,
+  Household,
+  HouseholdId,
   Parent,
   ParentRole,
   PersonalLeave,
@@ -148,6 +150,93 @@ export function adjustHoliday(
   }
 }
 
+export function isHouseholdId(value: string): value is HouseholdId {
+  return /^h\d+$/.test(value)
+}
+
+export function addHousehold(
+  plan: Plan,
+  household: Pick<Household, 'name' | 'federalState'>,
+): { plan: Plan; id: HouseholdId } {
+  const next = withFreshIds({
+    ...plan,
+    households: [...plan.households, { ...household, id: 'h0', absences: [] }],
+  })
+  return { plan: next, id: next.households.at(-1)!.id }
+}
+
+export function updateHousehold(
+  plan: Plan,
+  id: HouseholdId,
+  patch: Partial<Pick<Household, 'name' | 'federalState'>>,
+): Plan {
+  return {
+    ...plan,
+    households: plan.households.map((household) =>
+      household.id === id ? { ...household, ...patch } : household,
+    ),
+  }
+}
+
+export function removeHousehold(plan: Plan, id: HouseholdId): Plan {
+  return withFreshIds({
+    ...plan,
+    households: plan.households.filter((household) => household.id !== id),
+  })
+}
+
+/** The household an absence id (`h1a3`) belongs to. */
+export function householdOfAbsence(absenceId: string): HouseholdId | null {
+  const match = /^(h\d+)a\d+$/.exec(absenceId)
+  return match ? (match[1] as HouseholdId) : null
+}
+
+export function addAbsence(
+  plan: Plan,
+  householdId: HouseholdId,
+  range: DayRange,
+): { plan: Plan; id: string } {
+  const next = withFreshIds({
+    ...plan,
+    households: plan.households.map((household) =>
+      household.id === householdId
+        ? {
+            ...household,
+            absences: [...household.absences, { id: '', ...range, place: '', note: '' }],
+          }
+        : household,
+    ),
+  })
+  const household = next.households.find((candidate) => candidate.id === householdId)
+  return { plan: next, id: household?.absences.at(-1)?.id ?? '' }
+}
+
+export function updateAbsence(
+  plan: Plan,
+  absenceId: string,
+  patch: Partial<Omit<Household['absences'][number], 'id'>>,
+): Plan {
+  return {
+    ...plan,
+    households: plan.households.map((household) => ({
+      ...household,
+      absences: household.absences.map((absence) =>
+        absence.id === absenceId ? { ...absence, ...patch } : absence,
+      ),
+    })),
+  }
+}
+
+export function removeAbsence(plan: Plan, absenceId: string): Plan {
+  return withFreshIds({
+    ...plan,
+    households: plan.households.map((household) => ({
+      ...household,
+      absences: household.absences.filter((absence) => absence.id !== absenceId),
+    })),
+  })
+}
+
 /**
  * Ranges a bar must not overlap.
  * Family entries block each other; a parent's personal leave is blocked by their other
@@ -155,11 +244,15 @@ export function adjustHoliday(
  */
 export function blockersFor(
   plan: Plan,
-  target: { row: 'family' } | { row: ParentRole },
+  target: { row: 'family' } | { row: ParentRole } | { row: HouseholdId },
   ignoreId?: string,
 ): DayRange[] {
   if (target.row === 'family') {
     return plan.entries.filter((entry) => entry.id !== ignoreId)
+  }
+  if (isHouseholdId(target.row)) {
+    const household = plan.households.find((candidate) => candidate.id === target.row)
+    return household?.absences.filter((absence) => absence.id !== ignoreId) ?? []
   }
   const role = target.row
   return [

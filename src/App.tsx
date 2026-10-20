@@ -11,9 +11,11 @@ import { DetailGantt } from '@/features/detail-gantt/DetailGantt'
 import { MAX_RANGE_DAYS } from '@/features/detail-gantt/gantt-scale'
 import { federalStateByCode } from '@/features/holidays/federal-states'
 import { useCalendar } from '@/features/holidays/use-calendar'
+import { useHouseholdHolidays } from '@/features/holidays/use-household-holidays'
 import { readLastPlan } from '@/features/plan/last-plan'
 import { usePlan, useView } from '@/features/plan/use-plan'
 import { CalendarDialog } from '@/features/settings/CalendarDialog'
+import { HouseholdsDialog } from '@/features/settings/HouseholdsDialog'
 import { SettingsDialog } from '@/features/settings/SettingsDialog'
 import { YearOverview } from '@/features/year-overview/YearOverview'
 import { addDays, daysBetween, formatSavedCompact, formatSavedFull, yearOf } from '@/lib/dates'
@@ -28,6 +30,7 @@ export default function App() {
   const [lastPlan] = useState(() => (hasPlan ? null : readLastPlan()))
   const [settingsOpen, setSettingsOpen] = useState(!hasPlan && lastPlan === null)
   const [calendarOpen, setCalendarOpen] = useState(false)
+  const [householdsOpen, setHouseholdsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
   // Guard against hand-edited links with absurd ranges.
@@ -50,6 +53,7 @@ export default function App() {
     years,
     plan,
   )
+  const householdHolidays = useHouseholdHolidays(plan.households, years)
   const federalState = federalStateByCode(plan.federalState)
 
   async function copyLink() {
@@ -164,6 +168,9 @@ export default function App() {
             onCommit={commit}
             onChangeRange={(next, history) => view.openRange(next.start, next.end, history)}
             onClose={view.closeRange}
+            showOthers={view.showOthers}
+            householdHolidays={householdHolidays}
+            onEditHouseholds={() => setHouseholdsOpen(true)}
           />
         ) : (
           <YearOverview
@@ -172,12 +179,23 @@ export default function App() {
             calendar={calendar}
             onOpenRange={(next) => view.openRange(next.start, next.end)}
             onEditCalendar={() => setCalendarOpen(true)}
+            showOthers={view.showOthers}
+            onShowOthers={view.setShowOthers}
+            householdHolidays={householdHolidays}
+            onEditHouseholds={() => setHouseholdsOpen(true)}
           />
         )}
       </main>
 
       <InfoFooter />
 
+      <HouseholdsDialog
+        open={householdsOpen}
+        onClose={() => setHouseholdsOpen(false)}
+        plan={plan}
+        year={year}
+        onCommit={commit}
+      />
       <CalendarDialog
         open={calendarOpen}
         onClose={() => setCalendarOpen(false)}

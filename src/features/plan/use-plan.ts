@@ -60,5 +60,14 @@ export function useView() {
     void navigate({ search: { year: lastPlan.year, saved: lastPlan.saved, plan: lastPlan.plan } })
   }
 
-  return { year, range, setYear, openRange, closeRange, openPlan }
+  const showOthers = search.others !== 'hide'
+
+  function setShowOthers(show: boolean) {
+    void navigate({
+      search: (previous) => ({ ...previous, others: show ? undefined : ('hide' as const) }),
+      replace: true,
+    })
+  }
+
+  return { year, range, setYear, openRange, closeRange, openPlan, showOthers, setShowOthers }
 }

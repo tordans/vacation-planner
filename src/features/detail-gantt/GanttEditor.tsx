@@ -6,12 +6,15 @@ import { rangeCost } from '@/features/plan/leave-account'
 import {
   ANY_DAY,
   blockersFor,
+  householdOfAbsence,
   movableWindow,
   middleOf,
+  removeAbsence,
   removeEntry,
   removePersonalLeave,
   splitEntry,
   toggleCarer,
+  updateAbsence,
   updateEntry,
   updatePersonalLeave,
   type DayRange,
@@ -20,7 +23,9 @@ import {
   CARERS,
   carerLabel,
   parentLabel,
+  type Absence,
   type FamilyEntry,
+  type Household,
   type PersonalLeave,
   type Plan,
   type StayKind,
@@ -30,7 +35,7 @@ import { useNow } from '@/hooks/use-now'
 import { cn } from '@/lib/cn'
 import { daysBetween, formatDayShort, isIsoDay, today } from '@/lib/dates'
 
-export type Selection = { type: 'family' | 'personal'; id: string }
+export type Selection = { type: 'family' | 'personal' | 'absence'; id: string }
 
 type GanttEditorProps = {
   plan: Plan
@@ -50,6 +55,10 @@ export function GanttEditor({ plan, calendar, selection, onCommit, onDeselect }:
     selection?.type === 'personal'
       ? plan.personalLeave.find((candidate) => candidate.id === selection.id)
       : undefined
+  const absenceHousehold =
+    selection?.type === 'absence' ? householdOfAbsence(selection.id) : undefined
+  const household = plan.households.find((candidate) => candidate.id === absenceHousehold)
+  const absence = household?.absences.find((candidate) => candidate.id === selection?.id)
 
   if (entry) {
     return (
@@ -75,11 +84,24 @@ export function GanttEditor({ plan, calendar, selection, onCommit, onDeselect }:
       />
     )
   }
+  if (household && absence) {
+    return (
+      <AbsenceEditor
+        key={absence.id}
+        plan={plan}
+        household={household}
+        absence={absence}
+        onCommit={onCommit}
+        onDeselect={onDeselect}
+      />
+    )
+  }
   return (
     <p className="rounded-lg bg-white p-4 text-sm text-zinc-600 shadow-xs ring-1 ring-zinc-200">
       Ziehe in der Zeile <strong className="font-semibold text-zinc-900">Wo sind wir</strong> einen
       Zeitraum auf, um ihn zu planen. In den Zeilen der Eltern ziehst du eigenen Urlaub auf. Balken
-      lassen sich verschieben und an den Griffen verlängern; ein Klick öffnet die Details.
+      lassen sich verschieben und an den Griffen verlängern; ein Klick öffnet die Details. In den
+      Zeilen anderer Haushalte trägst du ein, wann sie nicht zu Hause sind.
     </p>
   )
 }
@@ -247,6 +269,70 @@ function LeaveEditor({ plan, calendar, leave, onCommit, onDeselect }: LeaveEdito
         onClick={() => {
           onDeselect()
           onCommit(removePersonalLeave(plan, leave.id))
+        }}
+      />
+    </section>
+  )
+}
+
+type AbsenceEditorProps = Omit<GanttEditorProps, 'selection' | 'calendar'> & {
+  household: Household
+  absence: Absence
+}
+
+/** Another household is away from home. Information only: no care, no leave, no gaps. */
+function AbsenceEditor({ plan, household, absence, onCommit, onDeselect }: AbsenceEditorProps) {
+  const name = household.name || 'Haushalt'
+  const length = daysBetween(absence.start, absence.end) + 1
+  const window = movableWindow(
+    blockersFor(plan, { row: household.id }, absence.id),
+    absence,
+    ANY_DAY,
+  )
+
+  function changeDates(range: DayRange) {
+    if (!isIsoDay(range.start) || !isIsoDay(range.end) || range.start > range.end) return
+    if (range.start < window.start || range.end > window.end) return
+    onCommit(updateAbsence(plan, absence.id, range))
+  }
+
+  return (
+    <section className="space-y-4 rounded-lg bg-white p-4 shadow-xs ring-1 ring-zinc-200">
+      <EditorHeader
+        title={`${name} nicht zu Hause`}
+        range={absence}
+        length={length}
+        onDeselect={onDeselect}
+      />
+      <p className="text-sm text-zinc-600">
+        Nur zur Information: kostet keine Urlaubstage und braucht keine Betreuung.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <DateFields range={absence} window={window} onChange={changeDates} />
+        <label className="block text-sm font-medium">
+          Ort
+          <DraftInput
+            className="mt-1"
+            value={absence.place}
+            placeholder="z. B. Ferienwohnung"
+            maxLength={60}
+            onCommit={(place) => onCommit(updateAbsence(plan, absence.id, { place }), 'replace')}
+          />
+        </label>
+        <label className="block text-sm font-medium sm:col-span-2 lg:col-span-4">
+          Notiz
+          <DraftInput
+            className="mt-1"
+            value={absence.note}
+            maxLength={120}
+            onCommit={(note) => onCommit(updateAbsence(plan, absence.id, { note }), 'replace')}
+          />
+        </label>
+      </div>
+      <DeleteButton
+        onClick={() => {
+          onDeselect()
+          onCommit(removeAbsence(plan, absence.id))
         }}
       />
     </section>

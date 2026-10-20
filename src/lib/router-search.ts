@@ -20,7 +20,7 @@ const makeSearchPretty = (searchString: string) =>
     .replaceAll('%2F', '/')
 
 /** Readable params first, the long compressed plan last. */
-const PARAM_ORDER = ['year', 'from', 'to', 'saved', 'plan']
+const PARAM_ORDER = ['year', 'from', 'to', 'others', 'saved', 'plan']
 
 function orderParams(search: Record<string, unknown>) {
   const ordered: Record<string, unknown> = {}
