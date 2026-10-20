@@ -158,10 +158,48 @@ deploy targets and CORS has to allow the GitHub Pages origin.
 - **Info texts:** "Gut zu wissen" explains where the data lives, who can read it and how links are
   changed.
 
+## Agent access (MCP)
+
+Without SSH, agents need a door into the running system. Two pieces:
+
+**1. An MCP endpoint in our own API** (`POST /api/mcp`, stateless Streamable HTTP, JSON responses
+only). It is protected by its own secret `MCP_KEY` (GitHub secret, same rotation as the plan
+keys) and is the only way to look inside the server besides the health check. Tools:
+
+| Tool         | Does                                                                                                                               | Writes? |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `status`     | PHP version, loaded extensions, deployed commit, schema version, DB reachable, disk use of the app folder                          | no      |
+| `read_log`   | Last N lines of our own `api.log` (requests with status and duration, errors with stack trace; keys never logged), optional filter | no      |
+| `query`      | Read-only SQL (`SELECT` only, checked server-side, row limit), for `plan` and `schema_migrations`                                  | no      |
+| `get_plan`   | Current plan JSON with version and `updated_at`                                                                                    | no      |
+| `list_files` | Deployed files with size and hash, to compare with the commit                                                                      | no      |
+| `put_plan`   | Replace the plan (with `If-Match`), e.g. to repair or restore                                                                      | yes     |
+| `migrate`    | Apply pending migrations                                                                                                           | yes     |
+
+Write tools are off unless `MCP_ALLOW_WRITE=1` is set in the deploy; read tools are enough for
+debugging.
+
+Implementation: the official PHP SDK (`modelcontextprotocol/php-sdk`, maintained by the PHP
+Foundation and Symfony, still marked experimental) supports HTTP transports, but needs Composer
+dependencies; they would be installed in the GitHub Actions job and uploaded as `vendor/`. With
+seven tools a hand-written endpoint (JSON-RPC `initialize`, `tools/list`, `tools/call`, ~200
+lines) is simpler and has no dependency to keep up to date. Recommendation: hand-written, with the
+SDK as the upgrade path if we ever need resources, prompts or streaming.
+
+**2. File access over FTPS from the agent's machine** with an existing FTP MCP server in
+**read-only mode**, limited to the app's folder, e.g. `ftp-mcp` (Kynlos: read-only mode, dry-run
+sync, connection reuse) or `vielhuber/ftpmcp` (path jail, read-only). This lets an agent read
+the all-inkl access and error logs, which all-inkl provides as files, and check what was uploaded.
+Not yet verified which of these is maintained; check before use. Deploys stay in GitHub Actions,
+never through the agent.
+
+Direct MySQL access from outside: not verified whether all-inkl allows it on Privat+; the plan
+does not depend on it, `query` covers it.
+
 ## Phases
 
-1. API with local tests (PHP + MariaDB in Docker), deploy workflow with a dry run, first deploy and
-   health check.
+1. API with local tests (PHP + MariaDB in Docker), MCP endpoint with read tools, deploy workflow
+   with a dry run, first deploy and health check.
 2. App: API client, opening `#key`, admin view with autosave and conflict handling.
 3. App: view role, info texts, README; generate both links and share them.
 
@@ -183,6 +221,7 @@ instead of all-inkl. Free tier: 100,000 requests/day, D1 5 GB and 100,000 row wr
 
 - Whoever has a link has its access until the key is changed; the links must not be posted in
   public places. Changing a key is quick, but every holder needs the new link.
-- No SSH: debugging relies on our own log file and the health check.
+- No SSH: debugging relies on our own log file, the health check and the MCP endpoint; a leaked
+  `MCP_KEY` gives read access to the plan, so it is rotated like the plan keys.
 - An interrupted FTPS upload can leave a half-updated state; the health check with the commit hash
   makes that visible and a rerun fixes it.
