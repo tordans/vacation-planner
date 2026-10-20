@@ -31,6 +31,11 @@ export type FamilyEntry = {
   note: string
   /** Empty means: care is still open. */
   carers: Carer[]
+  /**
+   * An idea, not decided yet. Ideas may overlap each other and fixed entries; they cost no leave,
+   * cover no care and are not shown in the carers' rows until they are made fixed.
+   */
+  isIdea: boolean
 }
 
 /** Leave one parent takes on their own, unrelated to child care. */
@@ -154,7 +159,7 @@ export const wirePlanSchema = z.object({
   v: z.literal(1),
   s: z.string(),
   p: z.tuple([wireParentSchema, wireParentSchema]),
-  /** [start, end, kind (0 home, 1 away), carer bitmask, place, note] */
+  /** [start, end, kind (0 home, 1 away), carer bitmask, place, note, idea?] */
   e: z.array(
     z.tuple([
       isoDaySchema,
@@ -163,6 +168,8 @@ export const wirePlanSchema = z.object({
       z.number().int().min(0).max(7),
       z.string(),
       z.string(),
+      /** 1 = idea; left out for fixed entries, so older links stay valid */
+      z.literal(1).optional(),
     ]),
   ),
   /** [parent (0 mother, 1 father), start, end, kind, place, note] */
@@ -208,3 +215,8 @@ export const wirePlanSchema = z.object({
 })
 
 export type WirePlan = z.infer<typeof wirePlanSchema>
+
+/** Entries that are decided. Only these cost leave, cover care and block each other. */
+export function fixedEntries(plan: Plan) {
+  return plan.entries.filter((entry) => !entry.isIdea)
+}

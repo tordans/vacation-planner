@@ -1,6 +1,6 @@
 import type { Calendar } from '@/features/holidays/periods'
 import { eachDay, isoWeekday, yearOf, type IsoDay } from '@/lib/dates'
-import type { Plan } from './plan-schema'
+import { fixedEntries, type Plan } from './plan-schema'
 
 /**
  * School-free weekdays in the year nobody is planned for yet:
@@ -14,7 +14,7 @@ export function coverageGaps(
   today: IsoDay,
 ): Set<IsoDay> {
   const covered = new Set<IsoDay>()
-  for (const entry of plan.entries) {
+  for (const entry of fixedEntries(plan)) {
     if (entry.carers.length === 0) continue
     for (const day of eachDay(entry.start, entry.end)) covered.add(day)
   }

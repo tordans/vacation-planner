@@ -44,14 +44,13 @@ function toWire(plan: Plan): WirePlan {
     v: 1,
     s: plan.federalState,
     p: [toWireParent(plan.parents.mother), toWireParent(plan.parents.father)],
-    e: plan.entries.map((entry) => [
-      entry.start,
-      entry.end,
-      entry.kind === 'away' ? 1 : 0,
-      carersToMask(entry.carers),
-      entry.place,
-      entry.note,
-    ]),
+    e: plan.entries.map((entry): WirePlan['e'][number] => {
+      const kind = entry.kind === 'away' ? 1 : 0
+      const mask = carersToMask(entry.carers)
+      return entry.isIdea
+        ? [entry.start, entry.end, kind, mask, entry.place, entry.note, 1]
+        : [entry.start, entry.end, kind, mask, entry.place, entry.note]
+    }),
     x: plan.personalLeave.map((leave) => [
       leave.parent === 'mother' ? 0 : 1,
       leave.start,
@@ -105,7 +104,8 @@ function fromWire(wire: WirePlan): Plan {
     },
     entries: wire.e
       .filter(([start, end]) => start <= end)
-      .map(([start, end, kind, mask, place, note], index) => ({
+
+      .map(([start, end, kind, mask, place, note, idea], index) => ({
         id: `e${index}`,
         start,
         end,
@@ -113,6 +113,7 @@ function fromWire(wire: WirePlan): Plan {
         carers: maskToCarers(mask),
         place,
         note,
+        isIdea: idea === 1,
       })),
     personalLeave: wire.x
       .filter(([, start, end]) => start <= end)

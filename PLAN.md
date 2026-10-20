@@ -403,6 +403,18 @@ Information-only layer next to the family's own plan, decided with the user:
 - **Link format:** optional `o` array in the plan (`[name, state code or '', [[start, end, place,
 note], …]]`), so older links keep working.
 
-## 13. Central storage
+## 13. Ideas in "Wo sind wir" (2026-10-20)
+
+- A family entry can be an **idea** (`isIdea`). Ideas sit in extra lanes below "Wo sind wir",
+  dashed, and may overlap each other and fixed entries; overlapping ideas get separate lanes.
+- New ideas are dragged out in the "+ Idee" lane. The editor offers "Fest einplanen" (only when
+  no fixed entry overlaps), "Zur Idee machen" and "Als weitere Idee kopieren".
+- Ideas cost no leave, cover no care, do not appear in the carers' rows and do not close red
+  markers. The editor still shows what they would cost.
+- Year overview: dashed line on days covered only by ideas, "Idee: …" in the day tooltip, and an
+  "Idee" badge in the plan list.
+- Link format: optional seventh element `1` on an entry tuple; older links stay valid.
+
+## 14. Central storage
 
 Proposal with read and write links, see [docs/central-storage-plan.md](docs/central-storage-plan.md).

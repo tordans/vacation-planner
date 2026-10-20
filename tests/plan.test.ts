@@ -244,3 +244,28 @@ describe('other households', () => {
     expect(coverageGaps(plan, 2027, berlin2027, '2027-01-01').has('2027-07-01')).toBe(true)
   })
 })
+
+describe('ideas', () => {
+  it('round-trip, overlap freely and cost nothing until fixed', () => {
+    let { plan, id: fixedId } = planWithEntry('2027-07-12', '2027-07-16', { carers: ['mother'] })
+    const first = addEntry(plan, { start: '2027-07-14', end: '2027-07-23' }, true)
+    plan = updateEntry(first.plan, first.id, { place: 'Oma & Opa', carers: ['grandparents'] })
+    const second = addEntry(plan, { start: '2027-07-19', end: '2027-07-30' }, true)
+    plan = updateEntry(second.plan, second.id, { place: 'Andere Großeltern', carers: ['father'] })
+    expect(decodePlan(encodePlan(plan))).toEqual(plan)
+
+    expect(blockersFor(plan, { row: 'family' }, first.id)).toEqual([])
+    expect(blockersFor(plan, { row: 'family' }, fixedId)).toEqual([])
+    expect(leaveAccount(plan, 'father', 2027, berlin2027).planned).toBe(0)
+    expect(coverageGaps(plan, 2027, berlin2027, '2027-01-01').has('2027-07-20')).toBe(true)
+
+    const decided = updateEntry(plan, second.id, { isIdea: false })
+    expect(leaveAccount(decided, 'father', 2027, berlin2027).planned).toBe(8)
+    expect(coverageGaps(decided, 2027, berlin2027, '2027-01-01').has('2027-07-20')).toBe(false)
+  })
+
+  it('keep older links without the idea flag as fixed entries', () => {
+    const { plan } = planWithEntry('2027-07-12', '2027-07-16', {})
+    expect(decodePlan(encodePlan(plan)).entries[0]?.isIdea).toBe(false)
+  })
+})

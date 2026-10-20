@@ -1,7 +1,7 @@
 import type { Calendar } from '@/features/holidays/periods'
 import { eachDay, isoWeekday, yearOf, type IsoDay } from '@/lib/dates'
 import type { DayRange } from './plan-actions'
-import { leaveBudget, type Parent, type ParentRole, type Plan } from './plan-schema'
+import { fixedEntries, leaveBudget, type Parent, type ParentRole, type Plan } from './plan-schema'
 
 export type LeaveCategory = 'care' | 'family' | 'personal'
 
@@ -28,7 +28,7 @@ function leaveDays(plan: Plan, role: ParentRole, calendar: Calendar) {
     }
   }
   // Family entries win over personal leave on the same day.
-  for (const entry of plan.entries) {
+  for (const entry of fixedEntries(plan)) {
     if (!entry.carers.includes(role)) continue
     const category = entry.kind === 'away' ? 'family' : 'care'
     for (const day of eachDay(entry.start, entry.end)) {

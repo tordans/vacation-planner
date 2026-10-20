@@ -5,6 +5,7 @@ import type { Calendar } from '@/features/holidays/periods'
 import { rangeCost } from '@/features/plan/leave-account'
 import {
   ANY_DAY,
+  addEntry,
   blockersFor,
   householdOfAbsence,
   movableWindow,
@@ -22,6 +23,7 @@ import {
 import {
   CARERS,
   carerLabel,
+  fixedEntries,
   parentLabel,
   type Absence,
   type FamilyEntry,
@@ -35,6 +37,9 @@ import { useNow } from '@/hooks/use-now'
 import { cn } from '@/lib/cn'
 import { daysBetween, formatDayShort, isIsoDay, today } from '@/lib/dates'
 
+const secondaryButtonClass =
+  'rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-zinc-300 ring-inset hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-sky-600 disabled:opacity-40'
+
 export type Selection = { type: 'family' | 'personal' | 'absence'; id: string }
 
 type GanttEditorProps = {
@@ -43,10 +48,18 @@ type GanttEditorProps = {
   selection: Selection | null
   onCommit: (plan: Plan, history?: 'push' | 'replace') => void
   onDeselect: () => void
+  onSelect: (selection: Selection) => void
 }
 
 /** Details of the selected bar, shown below the chart. */
-export function GanttEditor({ plan, calendar, selection, onCommit, onDeselect }: GanttEditorProps) {
+export function GanttEditor({
+  plan,
+  calendar,
+  selection,
+  onCommit,
+  onDeselect,
+  onSelect,
+}: GanttEditorProps) {
   const entry =
     selection?.type === 'family'
       ? plan.entries.find((candidate) => candidate.id === selection.id)
@@ -69,6 +82,7 @@ export function GanttEditor({ plan, calendar, selection, onCommit, onDeselect }:
         entry={entry}
         onCommit={onCommit}
         onDeselect={onDeselect}
+        onSelect={onSelect}
       />
     )
   }
@@ -108,7 +122,19 @@ export function GanttEditor({ plan, calendar, selection, onCommit, onDeselect }:
 
 type EntryEditorProps = Omit<GanttEditorProps, 'selection'> & { entry: FamilyEntry }
 
-function EntryEditor({ plan, calendar, entry, onCommit, onDeselect }: EntryEditorProps) {
+function EntryEditor({ plan, calendar, entry, onCommit, onDeselect, onSelect }: EntryEditorProps) {
+  // An idea can only become fixed where no other fixed entry is.
+  const clashesWithFixed = fixedEntries(plan).some(
+    (other) => other.id !== entry.id && other.start <= entry.end && other.end >= entry.start,
+  )
+
+  function copyAsIdea() {
+    const added = addEntry(plan, entry, true)
+    const { id: _id, isIdea: _isIdea, ...fields } = entry
+    onCommit(updateEntry(added.plan, added.id, fields))
+    onSelect({ type: 'family', id: added.id })
+  }
+
   const now = useNow()
   const length = daysBetween(entry.start, entry.end) + 1
   const window = movableWindow(blockersFor(plan, { row: 'family' }, entry.id), entry, ANY_DAY)
@@ -122,7 +148,7 @@ function EntryEditor({ plan, calendar, entry, onCommit, onDeselect }: EntryEdito
   return (
     <section className="space-y-4 rounded-lg bg-white p-4 shadow-xs ring-1 ring-zinc-200">
       <EditorHeader
-        title="Zeitraum der Familie"
+        title={entry.isIdea ? 'Idee für die Familie' : 'Zeitraum der Familie'}
         range={entry}
         length={length}
         onDeselect={onDeselect}
@@ -184,18 +210,45 @@ function EntryEditor({ plan, calendar, entry, onCommit, onDeselect }: EntryEdito
             )
           })}
         </div>
-        {entry.carers.length === 0 && entry.end >= today(now) && (
+        {entry.isIdea && (
+          <p className="mt-2 text-xs text-zinc-600">
+            Eine Idee kostet noch keine Urlaubstage und zählt nicht als Betreuung. Die Zahlen
+            zeigen, was sie kosten würde.
+          </p>
+        )}
+        {!entry.isIdea && entry.carers.length === 0 && entry.end >= today(now) && (
           <p className="mt-2 text-xs font-medium text-red-600">
             Betreuung ist noch offen. Die Ferientage in diesem Zeitraum gelten als ungeplant.
           </p>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
+        {entry.isIdea ? (
+          <button
+            type="button"
+            disabled={clashesWithFixed}
+            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600 disabled:opacity-40"
+            onClick={() => onCommit(updateEntry(plan, entry.id, { isIdea: false }))}
+          >
+            Fest einplanen
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={secondaryButtonClass}
+            onClick={() => onCommit(updateEntry(plan, entry.id, { isIdea: true }))}
+          >
+            Zur Idee machen
+          </button>
+        )}
+        <button type="button" className={secondaryButtonClass} onClick={copyAsIdea}>
+          Als weitere Idee kopieren
+        </button>
         <button
           type="button"
           disabled={length < 2}
-          className="rounded-md px-3 py-1.5 text-sm font-medium ring-1 ring-zinc-300 ring-inset hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-sky-600 disabled:opacity-40"
+          className={secondaryButtonClass}
           onClick={() => onCommit(splitEntry(plan, entry.id, middleOf(entry)))}
         >
           In der Mitte teilen
@@ -206,12 +259,18 @@ function EntryEditor({ plan, calendar, entry, onCommit, onDeselect }: EntryEdito
             onCommit(removeEntry(plan, entry.id))
           }}
         />
+        {entry.isIdea && clashesWithFixed && (
+          <p className="w-full text-xs text-zinc-600">
+            Überschneidet sich mit einem festen Zeitraum. Verschiebe die Idee oder den festen
+            Zeitraum, um sie fest einzuplanen.
+          </p>
+        )}
       </div>
     </section>
   )
 }
 
-type LeaveEditorProps = Omit<GanttEditorProps, 'selection'> & { leave: PersonalLeave }
+type LeaveEditorProps = Omit<GanttEditorProps, 'selection' | 'onSelect'> & { leave: PersonalLeave }
 
 function LeaveEditor({ plan, calendar, leave, onCommit, onDeselect }: LeaveEditorProps) {
   const length = daysBetween(leave.start, leave.end) + 1
@@ -275,7 +334,7 @@ function LeaveEditor({ plan, calendar, leave, onCommit, onDeselect }: LeaveEdito
   )
 }
 
-type AbsenceEditorProps = Omit<GanttEditorProps, 'selection' | 'calendar'> & {
+type AbsenceEditorProps = Omit<GanttEditorProps, 'selection' | 'calendar' | 'onSelect'> & {
   household: Household
   absence: Absence
 }

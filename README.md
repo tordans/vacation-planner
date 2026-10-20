@@ -22,6 +22,9 @@ app title, so an old bookmark is recognisable as old.
   federal state to see its school holidays, and enter when they are not at home, in grey bars in
   their row. They never need care, cost no leave and create no unplanned days. Hide the rows with
   the "Andere Haushalte" switch.
+- **Ideas**: below "Wo sind wir", drag out ideas that are not decided yet, e.g. "with one set of
+  grandparents" and "with the other set". Ideas may overlap each other and fixed periods, cost no
+  leave and cover no care until "Fest einplanen" turns one into a fixed period.
 - **Leave days** are only charged on a parent's working days that are not public holidays, so a
   four-day week or a bridge day on a day off is accounted for correctly.
 - **Holidays** come from [mehr-schulferien.de](https://www.mehr-schulferien.de) for the selected

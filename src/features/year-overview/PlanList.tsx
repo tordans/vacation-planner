@@ -68,6 +68,11 @@ export function PlanList({ plan, year, calendar, today, onOpen }: PlanListProps)
               >
                 {stayTitle(item)}
               </span>
+              {row.type === 'family' && row.item.isIdea && (
+                <span className="ring-dashed rounded-full px-2 py-0.5 text-xs font-medium text-zinc-600 ring-1 ring-zinc-400">
+                  Idee
+                </span>
+              )}
               {row.type === 'family' ? (
                 row.item.carers.length > 0 ? (
                   row.item.carers.map((carer) => (
@@ -81,7 +86,7 @@ export function PlanList({ plan, year, calendar, today, onOpen }: PlanListProps)
                       {carerLabel(plan, carer)}
                     </span>
                   ))
-                ) : item.end < today ? null : (
+                ) : item.end < today || row.item.isIdea ? null : (
                   <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
                     Betreuung offen
                   </span>
@@ -105,6 +110,7 @@ export function PlanList({ plan, year, calendar, today, onOpen }: PlanListProps)
                         `${parentLabel(plan, role)} ${rangeCost(plan, role, item, calendar)} Urlaubstage`,
                     )
                     .join(' · ')}
+                  {row.type === 'family' && row.item.isIdea && ' (falls umgesetzt)'}
                 </span>
               )}
             </span>

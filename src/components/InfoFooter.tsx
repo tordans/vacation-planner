@@ -172,6 +172,19 @@ export function InfoFooter() {
             </p>
           </Topic>
 
+          <Topic title="Wie plane ich mit Ideen?">
+            <p>
+              Unter „Wo sind wir“ ziehst du in der Zeile „+ Idee“ Zeiträume auf, die noch nicht
+              entschieden sind, zum Beispiel „bei den einen Großeltern“ und „bei den anderen“. Ideen
+              dürfen sich überschneiden, auch mit festen Zeiträumen.
+            </p>
+            <p>
+              Ideen kosten keine Urlaubstage und zählen nicht als Betreuung; der Editor zeigt aber,
+              was sie kosten würden. Mit „Fest einplanen“ wird eine Idee zu einem festen Zeitraum,
+              sobald sie sich mit keinem anderen festen Zeitraum überschneidet.
+            </p>
+          </Topic>
+
           <Topic title="Was bedeuten die roten Punkte?">
             <p>
               Ein roter Punkt markiert einen schulfreien Wochentag, für den noch niemand als

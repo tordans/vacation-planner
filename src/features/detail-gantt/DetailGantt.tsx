@@ -33,6 +33,8 @@ import {
   carerLabel,
   PARENT_ROLES,
   parentLabel,
+  fixedEntries,
+  type FamilyEntry,
   type HouseholdId,
   type ParentRole,
   type Plan,
@@ -68,29 +70,47 @@ import {
 import { GanttBar } from './GanttBar'
 import { GanttEditor, type Selection } from './GanttEditor'
 
-type EditableRow = 'family' | ParentRole | HouseholdId
+/** `idea`: the lanes below "Wo sind wir" for family entries that are not decided yet. */
+type EditableRow = 'family' | 'idea' | ParentRole | HouseholdId
 
 function selectionType(row: EditableRow): Selection['type'] {
-  if (row === 'family') return 'family'
+  if (row === 'family' || row === 'idea') return 'family'
   return isHouseholdId(row) ? 'absence' : 'personal'
 }
 
 function addOn(plan: Plan, row: EditableRow, period: DayRange) {
   if (row === 'family') return addEntry(plan, period)
+  if (row === 'idea') return addEntry(plan, period, true)
   if (isHouseholdId(row)) return addAbsence(plan, row, period)
   return addPersonalLeave(plan, row, period)
 }
 
 function updateOn(plan: Plan, row: EditableRow, id: string, period: DayRange) {
-  if (row === 'family') return updateEntry(plan, id, period)
+  if (row === 'family' || row === 'idea') return updateEntry(plan, id, period)
   if (isHouseholdId(row)) return updateAbsence(plan, id, period)
   return updatePersonalLeave(plan, id, period)
 }
 
 function removeOn(plan: Plan, row: EditableRow, id: string) {
-  if (row === 'family') return removeEntry(plan, id)
+  if (row === 'family' || row === 'idea') return removeEntry(plan, id)
   if (isHouseholdId(row)) return removeAbsence(plan, id)
   return removePersonalLeave(plan, id)
+}
+
+/** Ranges a bar in this row must not overlap. Ideas overlap anything. */
+function blockersOn(plan: Plan, row: EditableRow, ignoreId?: string) {
+  return row === 'idea' ? [] : blockersFor(plan, { row }, ignoreId)
+}
+
+/** Ideas stacked into as few lanes as possible; overlapping ideas get separate lanes. */
+function ideaLanes(ideas: FamilyEntry[]) {
+  const lanes: FamilyEntry[][] = []
+  for (const idea of ideas.toSorted((a, b) => a.start.localeCompare(b.start))) {
+    const lane = lanes.find((candidate) => candidate.at(-1)!.end < idea.start)
+    if (lane) lane.push(idea)
+    else lanes.push([idea])
+  }
+  return lanes
 }
 
 type Drag = {
@@ -121,6 +141,13 @@ type DetailGanttProps = {
 
 const rowClass = 'relative h-11 border-t border-zinc-200'
 const labelClass = 'flex h-11 items-center border-t border-zinc-200 px-3 text-xs font-medium'
+const ideaRowClass = 'relative h-9 border-t border-dashed border-zinc-200'
+const ideaLabelClass =
+  'flex h-9 items-center border-t border-dashed border-zinc-200 px-3 text-xs font-medium'
+const IDEA_STYLES: Record<FamilyEntry['kind'], string> = {
+  away: 'bg-sky-50 text-sky-900 shadow-none outline-2 -outline-offset-2 outline-sky-600 outline-dashed',
+  home: 'bg-emerald-50 text-emerald-900 shadow-none outline-2 -outline-offset-2 outline-emerald-600 outline-dashed',
+}
 const toolButtonClass =
   'inline-flex h-8 items-center gap-1 rounded-md bg-white px-2.5 text-xs font-medium ring-1 ring-zinc-300 ring-inset hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-sky-600 disabled:opacity-40'
 
@@ -178,7 +205,7 @@ export function DetailGantt({
     if (event.button !== 0 || event.pointerType === 'touch') return
     const day = pointerDay(event.clientX)
     const anchor = { start: day, end: day }
-    const window = freeWindow(blockersFor(plan, { row }), anchor, range)
+    const window = freeWindow(blockersOn(plan, row), anchor, range)
     if (!window) return
     event.preventDefault()
     capturePointer(event)
@@ -200,7 +227,7 @@ export function DetailGantt({
     if (event.target !== event.currentTarget) return
     const day = pointerDay(event.clientX)
     const period = { start: day, end: day }
-    if (freeWindow(blockersFor(plan, { row }), period, range)) createAt(row, period)
+    if (freeWindow(blockersOn(plan, row), period, range)) createAt(row, period)
   }
 
   function startBarDrag(
@@ -217,7 +244,7 @@ export function DetailGantt({
     event.currentTarget.closest<HTMLElement>('[role="button"]')?.focus()
     capturePointer(event)
     const limits = { start: minDay(range.start, bar.start), end: maxDay(range.end, bar.end) }
-    const window = movableWindow(blockersFor(plan, { row }, id), bar, limits)
+    const window = movableWindow(blockersOn(plan, row, id), bar, limits)
     setDrag({
       row,
       mode,
@@ -278,7 +305,7 @@ export function DetailGantt({
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
     event.preventDefault()
     const step = event.key === 'ArrowLeft' ? -1 : 1
-    const window = movableWindow(blockersFor(plan, { row }, id), bar, ANY_DAY)
+    const window = movableWindow(blockersOn(plan, row, id), bar, ANY_DAY)
     const next = dragPreview(
       event.shiftKey ? 'resize-end' : 'move',
       bar,
@@ -322,6 +349,9 @@ export function DetailGantt({
       </div>
     )
   }
+
+  const fixed = fixedEntries(plan)
+  const lanes = ideaLanes(plan.entries.filter((entry) => entry.isIdea))
 
   // Toolbar: jump between school holidays, widen the range, zoom.
   const focusDay = addDays(range.start, 7)
@@ -419,6 +449,12 @@ export function DetailGantt({
           <div className={cn(labelClass, 'text-zinc-600')}>Ferien</div>
           <div className={cn(labelClass, 'text-zinc-600')}>Feiertage</div>
           <div className={labelClass}>Wo sind wir</div>
+          {lanes.map((_, index) => (
+            <div key={index} className={cn(ideaLabelClass, 'text-zinc-500')}>
+              {index === 0 && 'Ideen'}
+            </div>
+          ))}
+          <div className={cn(ideaLabelClass, 'text-zinc-400')}>+ Idee</div>
           {PARENT_ROLES.map((role) => (
             <div key={role} className={cn(labelClass, 'gap-2')}>
               <span className={cn('size-2 shrink-0 rounded-full', CARER_STYLES[role].dot)} />
@@ -595,7 +631,7 @@ export function DetailGantt({
               onPointerDown={(event) => startCreate('family', event)}
               onClick={(event) => handleRowClick('family', event)}
             >
-              {plan.entries.map((entry) => {
+              {fixed.map((entry) => {
                 const period = shown('family', entry.id, entry)
                 const box = boxFor(scale, period)
                 if (!box) return null
@@ -640,6 +676,56 @@ export function DetailGantt({
               {ghost('family')}
             </div>
 
+            {/* Ideas: not decided yet, may overlap each other and the fixed entries */}
+            {lanes.map((lane, index) => (
+              <div key={index} className={ideaRowClass}>
+                {lane.map((entry) => {
+                  const period = shown('idea', entry.id, entry)
+                  const box = boxFor(scale, period)
+                  if (!box) return null
+                  const length = daysBetween(period.start, period.end) + 1
+                  return (
+                    <GanttBar
+                      key={entry.id}
+                      box={box}
+                      className={IDEA_STYLES[entry.kind]}
+                      isSelected={selection?.type === 'family' && selection.id === entry.id}
+                      ariaLabel={`Idee: ${stayTitle(entry)}, ${formatDayRange(period.start, period.end)}`}
+                      label={stayTitle(entry)}
+                      tooltip={
+                        <>
+                          <span className="block">
+                            Idee: {stayTitle(entry)} · {plural(length, 'Tag', 'Tage')}
+                          </span>
+                          <span className="block font-normal text-zinc-300">
+                            {formatDayRange(period.start, period.end)}
+                          </span>
+                          {entry.carers.length > 0 && (
+                            <span className="block font-normal text-zinc-300">
+                              {entry.carers.map((carer) => carerLabel(plan, carer)).join(', ')}
+                            </span>
+                          )}
+                        </>
+                      }
+                      {...barHandlers('idea', entry.id, entry)}
+                    />
+                  )
+                })}
+              </div>
+            ))}
+            <div
+              className={cn(ideaRowClass, 'cursor-crosshair')}
+              onPointerDown={(event) => startCreate('idea', event)}
+              onClick={(event) => handleRowClick('idea', event)}
+            >
+              {lanes.length === 0 && (
+                <span className="pointer-events-none sticky left-2 inline-block pt-2.5 pl-2 text-xs text-zinc-400">
+                  Idee aufziehen, z. B. „Bei Oma & Opa“ – Ideen dürfen sich überschneiden
+                </span>
+              )}
+              {ghost('idea')}
+            </div>
+
             {/* Parents: leave from family entries plus their own leave */}
             {PARENT_ROLES.map((role) => (
               <div
@@ -648,7 +734,7 @@ export function DetailGantt({
                 onPointerDown={(event) => startCreate(role, event)}
                 onClick={(event) => handleRowClick(role, event)}
               >
-                {plan.entries.map((entry) => (
+                {fixed.map((entry) => (
                   <CarerSlot
                     key={entry.id}
                     box={boxFor(scale, shown('family', entry.id, entry))}
@@ -707,7 +793,7 @@ export function DetailGantt({
 
             {/* Grandparents */}
             <div className={rowClass}>
-              {plan.entries.map((entry) => (
+              {fixed.map((entry) => (
                 <CarerSlot
                   key={entry.id}
                   box={boxFor(scale, shown('family', entry.id, entry))}
@@ -814,6 +900,7 @@ export function DetailGantt({
         selection={selection}
         onCommit={onCommit}
         onDeselect={() => setSelection(null)}
+        onSelect={setSelection}
       />
     </div>
   )

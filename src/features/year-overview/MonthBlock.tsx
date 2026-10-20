@@ -193,7 +193,11 @@ function DayCell({
 }: DayCellProps) {
   const info = calendar.days.get(day)
   const isWeekend = isoWeekday(day) > 5
-  const entry = plan.entries.find((candidate) => candidate.start <= day && candidate.end >= day)
+  const covering = plan.entries.filter(
+    (candidate) => candidate.start <= day && candidate.end >= day,
+  )
+  const entry = covering.find((candidate) => !candidate.isIdea)
+  const ideas = covering.filter((candidate) => candidate.isIdea)
   const leaves = plan.personalLeave.filter(
     (candidate) => candidate.start <= day && candidate.end >= day,
   )
@@ -221,6 +225,11 @@ function DayCell({
                 : 'Betreuung offen'}
             </span>
           )}
+          {ideas.map((idea) => (
+            <span key={idea.id} className="block text-sky-100">
+              Idee: {stayTitle(idea)}
+            </span>
+          ))}
           {leaves.map((leave) => (
             <span key={leave.id} className="block text-fuchsia-200">
               {parentLabel(plan, leave.parent)}: {stayTitle(leave)} (eigener Urlaub)
@@ -285,6 +294,15 @@ function DayCell({
             ) : null,
           )}
         {isGap && <span className="absolute top-0.5 right-0.5 size-1.5 rounded-full bg-red-500" />}
+        {!entry && ideas[0] && (
+          <span
+            aria-hidden
+            className={cn(
+              'absolute inset-x-1 bottom-0.5 border-b-2 border-dashed',
+              ideas[0].kind === 'away' ? 'border-sky-600' : 'border-emerald-600',
+            )}
+          />
+        )}
         {entry && (
           <span
             className={cn(

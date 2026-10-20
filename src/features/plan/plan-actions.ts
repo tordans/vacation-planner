@@ -11,6 +11,7 @@ import type {
   PersonalLeave,
   Plan,
 } from './plan-schema'
+import { fixedEntries } from './plan-schema'
 import { withFreshIds } from './plan-url'
 
 export type DayRange = { start: IsoDay; end: IsoDay }
@@ -26,8 +27,16 @@ export function touchesYear(range: DayRange, year: number) {
   return overlaps(range, { start: `${year}-01-01`, end: `${year}-12-31` })
 }
 
-export function addEntry(plan: Plan, range: DayRange): { plan: Plan; id: string } {
-  const entry: FamilyEntry = { id: '', ...range, kind: 'home', place: '', note: '', carers: [] }
+export function addEntry(plan: Plan, range: DayRange, isIdea = false): { plan: Plan; id: string } {
+  const entry: FamilyEntry = {
+    id: '',
+    ...range,
+    kind: 'home',
+    place: '',
+    note: '',
+    carers: [],
+    isIdea,
+  }
   const next = withFreshIds({ ...plan, entries: [...plan.entries, entry] })
   return { plan: next, id: next.entries.at(-1)!.id }
 }
@@ -239,7 +248,7 @@ export function removeAbsence(plan: Plan, absenceId: string): Plan {
 
 /**
  * Ranges a bar must not overlap.
- * Family entries block each other; a parent's personal leave is blocked by their other
+ * Fixed family entries block each other (ideas block nothing); a parent's personal leave is blocked by their other
  * personal leave and by family entries where they already are a carer.
  */
 export function blockersFor(
@@ -248,7 +257,9 @@ export function blockersFor(
   ignoreId?: string,
 ): DayRange[] {
   if (target.row === 'family') {
-    return plan.entries.filter((entry) => entry.id !== ignoreId)
+    // Ideas overlap anything; fixed entries are blocked by the other fixed ones.
+    if (plan.entries.find((entry) => entry.id === ignoreId)?.isIdea) return []
+    return fixedEntries(plan).filter((entry) => entry.id !== ignoreId)
   }
   if (isHouseholdId(target.row)) {
     const household = plan.households.find((candidate) => candidate.id === target.row)
@@ -257,7 +268,7 @@ export function blockersFor(
   const role = target.row
   return [
     ...plan.personalLeave.filter((leave) => leave.parent === role && leave.id !== ignoreId),
-    ...plan.entries.filter((entry) => entry.carers.includes(role)),
+    ...fixedEntries(plan).filter((entry) => entry.carers.includes(role)),
   ]
 }
 
