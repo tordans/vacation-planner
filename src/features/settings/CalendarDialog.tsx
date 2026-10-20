@@ -30,6 +30,17 @@ const dateClass =
 const iconButtonClass =
   'inline-flex size-9 shrink-0 items-center justify-center rounded-md text-zinc-500 ring-1 ring-zinc-300 ring-inset hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-sky-600'
 
+type CustomDayDraft = { name: string; start: string; end: string }
+
+const EMPTY_CUSTOM_DAY: CustomDayDraft = { name: '', start: '', end: '' }
+
+/** A filled-in "new day" row as a period, or null while it has no valid dates. */
+function customDayFrom(draft: CustomDayDraft): Period | null {
+  const end = draft.end || draft.start
+  if (!isIsoDay(draft.start) || !isIsoDay(end) || draft.start > end) return null
+  return { name: draft.name.trim() || 'Schulfrei', start: draft.start, end }
+}
+
 /** All school-free days of the year: the imported ones can be corrected, own ones added. */
 export function CalendarDialog({
   open,
@@ -44,9 +55,18 @@ export function CalendarDialog({
     .map((day, index) => ({ day, index }))
     .filter(({ day }) => touchesYear(day, year))
     .toSorted((a, b) => a.day.start.localeCompare(b.day.start))
+  // The "new day" row lives here, so closing the dialog saves it like the existing rows.
+  const [draft, setDraft] = useState<CustomDayDraft>(EMPTY_CUSTOM_DAY)
+
+  function close() {
+    const day = customDayFrom(draft)
+    if (day) onCommit(addCustomDay(plan, day))
+    setDraft(EMPTY_CUSTOM_DAY)
+    onClose()
+  }
 
   return (
-    <Dialog open={open} onClose={onClose} className="relative z-40">
+    <Dialog open={open} onClose={close} className="relative z-40">
       <DialogBackdrop
         transition
         className="fixed inset-0 bg-zinc-950/30 transition duration-150 data-closed:opacity-0"
@@ -91,7 +111,15 @@ export function CalendarDialog({
                   }
                 />
               ))}
-              <AddCustomDay year={year} onAdd={(day) => onCommit(addCustomDay(plan, day))} />
+              <AddCustomDay
+                year={year}
+                draft={draft}
+                onDraft={setDraft}
+                onAdd={(day) => {
+                  onCommit(addCustomDay(plan, day))
+                  setDraft(EMPTY_CUSTOM_DAY)
+                }}
+              />
             </section>
 
             <ImportedSection
@@ -113,7 +141,7 @@ export function CalendarDialog({
               <button
                 type="button"
                 className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
-                onClick={onClose}
+                onClick={close}
               >
                 Fertig
               </button>
@@ -251,23 +279,24 @@ function PeriodRow({ period, isRemoved = false, hint, onChange, action }: Period
   )
 }
 
-function AddCustomDay({ year, onAdd }: { year: number; onAdd: (day: Period) => void }) {
-  const [name, setName] = useState('')
-  const [start, setStart] = useState('')
-  const [end, setEnd] = useState('')
-  const lastDay = end || start
-  const isValid = isIsoDay(start) && isIsoDay(lastDay) && start <= lastDay
+type AddCustomDayProps = {
+  year: number
+  draft: CustomDayDraft
+  onDraft: (draft: CustomDayDraft) => void
+  onAdd: (day: Period) => void
+}
+
+function AddCustomDay({ year, draft, onDraft, onAdd }: AddCustomDayProps) {
+  const { name, start, end } = draft
+  const day = customDayFrom(draft)
+  const isValid = day !== null
 
   return (
     <form
       className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg bg-zinc-50 p-3 ring-1 ring-zinc-200 sm:grid-cols-[minmax(0,1fr)_9.5rem_9.5rem_auto]"
       onSubmit={(event) => {
         event.preventDefault()
-        if (!isValid) return
-        onAdd({ name: name.trim() || 'Schulfrei', start, end: lastDay })
-        setName('')
-        setStart('')
-        setEnd('')
+        if (day) onAdd(day)
       }}
     >
       <input
@@ -277,7 +306,7 @@ function AddCustomDay({ year, onAdd }: { year: number; onAdd: (day: Period) => v
         maxLength={60}
         className={dateClass}
         value={name}
-        onChange={(event) => setName(event.target.value)}
+        onChange={(event) => onDraft({ ...draft, name: event.target.value })}
       />
       <input
         type="date"
@@ -286,7 +315,7 @@ function AddCustomDay({ year, onAdd }: { year: number; onAdd: (day: Period) => v
         value={start}
         min={`${year - 1}-01-01`}
         max={`${year + 1}-12-31`}
-        onChange={(event) => setStart(event.target.value)}
+        onChange={(event) => onDraft({ ...draft, start: event.target.value })}
       />
       <input
         type="date"
@@ -295,7 +324,7 @@ function AddCustomDay({ year, onAdd }: { year: number; onAdd: (day: Period) => v
         className={cn(dateClass, 'max-sm:col-start-1')}
         value={end}
         min={start || undefined}
-        onChange={(event) => setEnd(event.target.value)}
+        onChange={(event) => onDraft({ ...draft, end: event.target.value })}
       />
       <button
         type="submit"

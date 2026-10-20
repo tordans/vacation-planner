@@ -12,7 +12,7 @@ import {
   updateAbsence,
   updateHousehold,
 } from '@/features/plan/plan-actions'
-import type { Absence, Household, Plan } from '@/features/plan/plan-schema'
+import type { Absence, Household, HouseholdId, Plan } from '@/features/plan/plan-schema'
 import { cn } from '@/lib/cn'
 import { isIsoDay } from '@/lib/dates'
 
@@ -29,10 +29,52 @@ const fieldClass =
 const iconButtonClass =
   'inline-flex size-9 shrink-0 items-center justify-center rounded-md text-zinc-500 ring-1 ring-zinc-300 ring-inset hover:bg-zinc-50 hover:text-zinc-900 focus-visible:outline-2 focus-visible:outline-sky-600'
 
+type AbsenceDraft = { place: string; start: string; end: string }
+type HouseholdDraft = { name: string; federalState: string }
+
+const EMPTY_ABSENCE: AbsenceDraft = { place: '', start: '', end: '' }
+const EMPTY_HOUSEHOLD: HouseholdDraft = { name: '', federalState: '' }
+
+/** A filled-in "new absence" row as a range, or null while it has no valid dates. */
+function absenceRange(draft: AbsenceDraft) {
+  const end = draft.end || draft.start
+  return isIsoDay(draft.start) && isIsoDay(end) && draft.start <= end
+    ? { start: draft.start, end }
+    : null
+}
+
+function withAbsence(plan: Plan, householdId: HouseholdId, draft: AbsenceDraft) {
+  const range = absenceRange(draft)
+  if (!range) return plan
+  const added = addAbsence(plan, householdId, range)
+  const place = draft.place.trim()
+  return place ? updateAbsence(added.plan, added.id, { place }) : added.plan
+}
+
 /** Other households next to our plan, for information only: name, federal state, absences. */
 export function HouseholdsDialog({ open, onClose, plan, year, onCommit }: HouseholdsDialogProps) {
+  // The "new …" rows live here, so closing the dialog saves them like the existing rows.
+  const [absenceDrafts, setAbsenceDrafts] = useState<Partial<Record<HouseholdId, AbsenceDraft>>>({})
+  const [householdDraft, setHouseholdDraft] = useState<HouseholdDraft>(EMPTY_HOUSEHOLD)
+
+  function close() {
+    let next = plan
+    for (const household of plan.households) {
+      const draft = absenceDrafts[household.id]
+      if (draft) next = withAbsence(next, household.id, draft)
+    }
+    const name = householdDraft.name.trim()
+    if (name) {
+      next = addHousehold(next, { name, federalState: householdDraft.federalState || null }).plan
+    }
+    if (next !== plan) onCommit(next)
+    setAbsenceDrafts({})
+    setHouseholdDraft(EMPTY_HOUSEHOLD)
+    onClose()
+  }
+
   return (
-    <Dialog open={open} onClose={onClose} className="relative z-40">
+    <Dialog open={open} onClose={close} className="relative z-40">
       <DialogBackdrop
         transition
         className="fixed inset-0 bg-zinc-950/30 transition duration-150 data-closed:opacity-0"
@@ -63,16 +105,30 @@ export function HouseholdsDialog({ open, onClose, plan, year, onCommit }: Househ
                 plan={plan}
                 year={year}
                 onCommit={onCommit}
+                draft={absenceDrafts[household.id] ?? EMPTY_ABSENCE}
+                onDraft={(draft) => setAbsenceDrafts({ ...absenceDrafts, [household.id]: draft })}
+                onRemove={() => {
+                  // Ids are positional: drafts of later households would point to the wrong one.
+                  setAbsenceDrafts({})
+                  onCommit(removeHousehold(plan, household.id))
+                }}
               />
             ))}
 
-            <AddHouseholdForm onAdd={(household) => onCommit(addHousehold(plan, household).plan)} />
+            <AddHouseholdForm
+              draft={householdDraft}
+              onDraft={setHouseholdDraft}
+              onAdd={(household) => {
+                onCommit(addHousehold(plan, household).plan)
+                setHouseholdDraft(EMPTY_HOUSEHOLD)
+              }}
+            />
 
             <div className="flex justify-end">
               <button
                 type="button"
                 className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
-                onClick={onClose}
+                onClick={close}
               >
                 Fertig
               </button>
@@ -89,9 +145,20 @@ type HouseholdSectionProps = {
   plan: Plan
   year: number
   onCommit: (plan: Plan, history?: 'push' | 'replace') => void
+  draft: AbsenceDraft
+  onDraft: (draft: AbsenceDraft) => void
+  onRemove: () => void
 }
 
-function HouseholdSection({ household, plan, year, onCommit }: HouseholdSectionProps) {
+function HouseholdSection({
+  household,
+  plan,
+  year,
+  onCommit,
+  draft,
+  onDraft,
+  onRemove,
+}: HouseholdSectionProps) {
   const absences = household.absences
     .filter((absence) => touchesYear(absence, year))
     .toSorted((a, b) => a.start.localeCompare(b.start))
@@ -130,7 +197,7 @@ function HouseholdSection({ household, plan, year, onCommit }: HouseholdSectionP
           className={cn(iconButtonClass, 'max-sm:col-start-2 max-sm:row-start-1')}
           aria-label={`${household.name || 'Haushalt'} löschen`}
           title="Haushalt löschen"
-          onClick={() => onCommit(removeHousehold(plan, household.id))}
+          onClick={onRemove}
         >
           <TrashIcon className="size-4" />
         </button>
@@ -157,10 +224,11 @@ function HouseholdSection({ household, plan, year, onCommit }: HouseholdSectionP
         )}
         <AddAbsenceForm
           year={year}
-          onAdd={(range, place) => {
-            const added = addAbsence(plan, household.id, range)
-            const next = place ? updateAbsence(added.plan, added.id, { place }) : added.plan
-            onCommit(next)
+          draft={draft}
+          onDraft={onDraft}
+          onAdd={() => {
+            onCommit(withAbsence(plan, household.id, draft))
+            onDraft(EMPTY_ABSENCE)
           }}
         />
       </div>
@@ -223,26 +291,21 @@ function AbsenceRow({ absence, onChange, onRemove }: AbsenceRowProps) {
 
 type AddAbsenceFormProps = {
   year: number
-  onAdd: (range: { start: string; end: string }, place: string) => void
+  draft: AbsenceDraft
+  onDraft: (draft: AbsenceDraft) => void
+  onAdd: () => void
 }
 
-function AddAbsenceForm({ year, onAdd }: AddAbsenceFormProps) {
-  const [place, setPlace] = useState('')
-  const [start, setStart] = useState('')
-  const [end, setEnd] = useState('')
-  const lastDay = end || start
-  const isValid = isIsoDay(start) && isIsoDay(lastDay) && start <= lastDay
+function AddAbsenceForm({ year, draft, onDraft, onAdd }: AddAbsenceFormProps) {
+  const { place, start, end } = draft
+  const isValid = absenceRange(draft) !== null
 
   return (
     <form
       className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-lg bg-zinc-50 p-3 ring-1 ring-zinc-200 sm:grid-cols-[minmax(0,1fr)_9.5rem_9.5rem_auto]"
       onSubmit={(event) => {
         event.preventDefault()
-        if (!isValid) return
-        onAdd({ start, end: lastDay }, place.trim())
-        setPlace('')
-        setStart('')
-        setEnd('')
+        if (isValid) onAdd()
       }}
     >
       <input
@@ -252,7 +315,7 @@ function AddAbsenceForm({ year, onAdd }: AddAbsenceFormProps) {
         maxLength={60}
         className={fieldClass}
         value={place}
-        onChange={(event) => setPlace(event.target.value)}
+        onChange={(event) => onDraft({ ...draft, place: event.target.value })}
       />
       <input
         type="date"
@@ -261,7 +324,7 @@ function AddAbsenceForm({ year, onAdd }: AddAbsenceFormProps) {
         value={start}
         min={`${year - 1}-01-01`}
         max={`${year + 1}-12-31`}
-        onChange={(event) => setStart(event.target.value)}
+        onChange={(event) => onDraft({ ...draft, start: event.target.value })}
       />
       <input
         type="date"
@@ -270,7 +333,7 @@ function AddAbsenceForm({ year, onAdd }: AddAbsenceFormProps) {
         className={cn(fieldClass, 'max-sm:col-start-1')}
         value={end}
         min={start || undefined}
-        onChange={(event) => setEnd(event.target.value)}
+        onChange={(event) => onDraft({ ...draft, end: event.target.value })}
       />
       <button
         type="submit"
@@ -285,12 +348,13 @@ function AddAbsenceForm({ year, onAdd }: AddAbsenceFormProps) {
 }
 
 type AddHouseholdFormProps = {
+  draft: HouseholdDraft
+  onDraft: (draft: HouseholdDraft) => void
   onAdd: (household: { name: string; federalState: string | null }) => void
 }
 
-function AddHouseholdForm({ onAdd }: AddHouseholdFormProps) {
-  const [name, setName] = useState('')
-  const [federalState, setFederalState] = useState('')
+function AddHouseholdForm({ draft, onDraft, onAdd }: AddHouseholdFormProps) {
+  const { name, federalState } = draft
   const trimmed = name.trim()
 
   return (
@@ -300,8 +364,6 @@ function AddHouseholdForm({ onAdd }: AddHouseholdFormProps) {
         event.preventDefault()
         if (!trimmed) return
         onAdd({ name: trimmed, federalState: federalState || null })
-        setName('')
-        setFederalState('')
       }}
     >
       <input
@@ -311,13 +373,13 @@ function AddHouseholdForm({ onAdd }: AddHouseholdFormProps) {
         maxLength={60}
         className={fieldClass}
         value={name}
-        onChange={(event) => setName(event.target.value)}
+        onChange={(event) => onDraft({ ...draft, name: event.target.value })}
       />
       <select
         aria-label="Bundesland des neuen Haushalts"
         className={fieldClass}
         value={federalState}
-        onChange={(event) => setFederalState(event.target.value)}
+        onChange={(event) => onDraft({ ...draft, federalState: event.target.value })}
       >
         <option value="">Kein Bundesland</option>
         {FEDERAL_STATES.map((state) => (
