@@ -1,6 +1,6 @@
 # Copy to .github/dependabot.yml on scaffold.
 # Source: tilda-geo — https://github.com/FixMyBerlin/tilda-geo/blob/develop/.github/dependabot.yml
-# Private OSS: first-Friday cron — references/dependabot.md.
+# Private OSS: first-Thursday cron — references/dependabot.md.
 version: 2
 updates:
   - package-ecosystem: bun
@@ -8,7 +8,7 @@ updates:
       - /
     schedule:
       interval: cron
-      cronjob: '0 7 * * FRI#1'
+      cronjob: '0 7 * * THU#1'
       timezone: Europe/Berlin
     cooldown:
       default-days: 5
@@ -119,7 +119,7 @@ updates:
     directory: /
     schedule:
       interval: cron
-      cronjob: '0 7 * * FRI#1'
+      cronjob: '0 7 * * THU#1'
       timezone: Europe/Berlin
     cooldown:
       default-days: 5
