@@ -73,6 +73,17 @@ describe('poll from plan', () => {
     expect(ideasOfYear(plan, 2028)).toEqual([])
   })
 
+  it('falls back to the default family name when the plan name is "Chancen"', () => {
+    const poll = pollFromPlan(planWithIdea(), {
+      title: 'X',
+      familyName: ' Chancen ',
+      year: 2027,
+      schoolHolidays: null,
+      withIdeas: false,
+    })
+    expect(poll.sections).toEqual([{ name: 'Unsere Familie', ranges: [] }])
+  })
+
   it('calls an idea without a place "Idee" and skips fixed entries', () => {
     let plan = addEntry(emptyPlan(), { start: '2027-05-01', end: '2027-05-03' }, true).plan
     plan = addEntry(plan, { start: '2027-06-01', end: '2027-06-03' }).plan

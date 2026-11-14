@@ -4,29 +4,41 @@ import { useId, useState } from 'react'
 import { buttonClass, inputClass } from '@/components/ui/classes'
 import { FEDERAL_STATES, federalStateByCode } from '@/features/holidays/federal-states'
 import { fetchHolidayRanges } from './fetch-holiday-ranges'
-import { addFamily, addHolidays, findSection, isChancen, setFederalState } from './poll-data'
-import type { Poll } from './poll-schema'
-import { pollFromHash } from './poll-url'
+import { FIRST_YEAR, LAST_YEAR } from './LoadHolidays'
+import {
+  addFamily,
+  addHolidays,
+  findSection,
+  holidaysClipped,
+  isChancen,
+  setFederalState,
+} from './poll-data'
+import { MAX_RANGES_PER_SECTION, MAX_SECTIONS, type Poll, type UpdatePoll } from './poll-schema'
 
 type AddFamilyFormProps = {
   poll: Poll
   /** Year for the school holidays loaded together with a new family. */
   defaultYear: number
-  onChange: (poll: Poll) => void
+  updatePoll: UpdatePoll
 }
 
-export function AddFamilyForm({ poll, defaultYear, onChange }: AddFamilyFormProps) {
+export function AddFamilyForm({ poll, defaultYear, updatePoll }: AddFamilyFormProps) {
   const id = useId()
   const router = useRouter()
   const [name, setName] = useState('')
   const [code, setCode] = useState('')
+  const [clipped, setClipped] = useState(false)
   const trimmed = name.trim()
   const problem = isChancen(trimmed)
     ? '„Chancen“ ist für gemeinsame Zeiträume reserviert.'
     : findSection(poll, trimmed)
       ? 'Diese Familie gibt es schon.'
-      : null
+      : poll.sections.length >= MAX_SECTIONS
+        ? `Höchstens ${MAX_SECTIONS} Familien.`
+        : null
   const mutation = useMutation({ mutationFn: fetchHolidayRanges })
+  // Holidays of a year outside the loader's range would not load: use the nearest year that does.
+  const holidayYear = Math.min(Math.max(defaultYear, FIRST_YEAR), LAST_YEAR)
 
   return (
     <form
@@ -34,19 +46,24 @@ export function AddFamilyForm({ poll, defaultYear, onChange }: AddFamilyFormProp
       onSubmit={(event) => {
         event.preventDefault()
         if (trimmed === '' || problem) return
-        const added = addFamily(poll, trimmed)
         if (code === '') {
-          onChange(added)
+          updatePoll((latest) => addFamily(latest, trimmed))
           mutation.reset()
         } else {
-          onChange(setFederalState(added, trimmed, code))
-          const request = { code, year: defaultYear, withPublicHolidays: false }
+          const since = router.history.location.pathname
+          setClipped(false)
+          updatePoll((latest) => setFederalState(addFamily(latest, trimmed), trimmed, code))
+          const request = { code, year: holidayYear, withPublicHolidays: false }
           void mutation.mutateAsync(request).then(
             (ranges) => {
-              // The poll may have changed while the holidays loaded: apply them to the latest one.
-              // The router's history location is updated at once, unlike the rendered `poll`.
-              const latest = pollFromHash(router.history.location.hash)
-              onChange(addHolidays(latest, trimmed, code, ranges))
+              // The poll may have changed while the holidays loaded: they are applied to the latest one.
+              let didClip = false
+              updatePoll((latest) => {
+                const next = addHolidays(latest, trimmed, code, ranges)
+                didClip = holidaysClipped(next, trimmed, ranges)
+                return next
+              }, since)
+              setClipped(didClip)
             },
             // The error is shown below the form.
             () => undefined,
@@ -106,6 +123,11 @@ export function AddFamilyForm({ poll, defaultYear, onChange }: AddFamilyFormProp
       {mutation.isError && (
         <p role="alert" className="text-sm text-red-800">
           Ferien konnten nicht geladen werden. Du kannst sie in der Familie unten noch einmal laden.
+        </p>
+      )}
+      {clipped && (
+        <p role="status" className="text-sm text-amber-900">
+          Höchstens {MAX_RANGES_PER_SECTION} Zeiträume je Familie – ein Teil wurde nicht übernommen.
         </p>
       )}
       {mutation.isSuccess && mutation.data.length === 0 && (

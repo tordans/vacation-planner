@@ -156,7 +156,7 @@ export function PollChart({ rows }: { rows: PollRow[] }) {
           />
           {layout.chancen.map((frame) => (
             <div
-              key={`${frame.left}:${frame.width}`}
+              key={frame.id}
               aria-hidden="true"
               className="absolute inset-y-0 bg-emerald-400/20"
               style={{ left: `${frame.left}%`, width: `${frame.width}%` }}

@@ -16,8 +16,8 @@ export type ChartLayout = {
   weekCount: number
   dayCount: number
   months: Array<{ label: string; left: number }>
-  /** Windows that are highlighted over the whole chart. */
-  chancen: Frame[]
+  /** Windows that are highlighted over the whole chart, by range id. */
+  chancen: Array<Frame & { id: string }>
   today: number | null
 }
 
@@ -77,7 +77,9 @@ export function computeChartLayout(rows: PollRow[], today: IsoDay): ChartLayout 
     weekCount: dayCount / 7,
     months,
     chancen: rows.flatMap((row) =>
-      row.kind === 'chancen' && row.range ? [frameOf(layout, row.range)] : [],
+      row.kind === 'chancen' && row.range
+        ? [{ id: row.range.id, ...frameOf(layout, row.range) }]
+        : [],
     ),
     today: today >= start && today <= end ? (daysBetween(start, today) / dayCount) * 100 : null,
   }

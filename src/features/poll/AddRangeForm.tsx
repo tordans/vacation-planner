@@ -1,22 +1,24 @@
 import { useId, useState } from 'react'
 import { buttonClass, inputClass } from '@/components/ui/classes'
 import { rangeProblem } from './poll-data'
-import { MAX_DAY, MIN_DAY, type RangeInput } from './poll-schema'
+import { MAX_DAY, MAX_RANGES_PER_SECTION, MIN_DAY, type RangeInput } from './poll-schema'
 
 const EMPTY: RangeInput = { name: '', start: '', end: '' }
 
 type AddRangeFormProps = {
   /** Placeholder for the name, e.g. "Sommerurlaub". */
   namePlaceholder: string
+  /** The section has as many ranges as it may hold. */
+  full: boolean
   onAdd: (input: RangeInput) => void
 }
 
 /** Name and two dates; the button stays off until they make a valid range. */
-export function AddRangeForm({ namePlaceholder, onAdd }: AddRangeFormProps) {
+export function AddRangeForm({ namePlaceholder, full, onAdd }: AddRangeFormProps) {
   const id = useId()
   const [draft, setDraft] = useState(EMPTY)
   const touched = draft.start !== '' && draft.end !== '' && draft.name !== ''
-  const problem = rangeProblem(draft)
+  const problem = full ? `Höchstens ${MAX_RANGES_PER_SECTION} Zeiträume.` : rangeProblem(draft)
 
   return (
     <form
@@ -74,7 +76,7 @@ export function AddRangeForm({ namePlaceholder, onAdd }: AddRangeFormProps) {
           Hinzufügen
         </button>
       </div>
-      {touched && problem && (
+      {(full || touched) && problem && (
         <p role="alert" className="text-xs text-red-800">
           {problem}
         </p>

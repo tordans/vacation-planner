@@ -29,9 +29,17 @@ function Done() {
   )
 }
 
+function Saving() {
+  return (
+    <span role="status" className="text-sm text-zinc-600">
+      Wird gespeichert …
+    </span>
+  )
+}
+
 function TakeOverSection({ poll }: { poll: Poll }) {
   const server = useServerControls()
-  const { plan, commit, readOnly, role } = usePlan()
+  const { plan, commit, readOnly, role, saveState } = usePlan()
 
   let body
   if (server.load === 'loading') {
@@ -63,7 +71,12 @@ function TakeOverSection({ poll }: { poll: Poll }) {
             >
               <ItemText item={item} />
               {item.kind === 'no-federal-state' ? null : item.done ? (
-                <Done />
+                // "Übernommen" only once the server has it; an edit can still be lost before that.
+                saveState === 'saved' ? (
+                  <Done />
+                ) : (
+                  <Saving />
+                )
               ) : (
                 <button
                   type="button"

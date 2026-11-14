@@ -38,7 +38,7 @@ export function RangeRow({ range, onChange, onRemove }: RangeRowProps) {
         />
         <input
           type="date"
-          aria-label="Von"
+          aria-label={`Von (${range.name})`}
           min={MIN_DAY}
           max={MAX_DAY}
           value={draft.start}
@@ -47,7 +47,7 @@ export function RangeRow({ range, onChange, onRemove }: RangeRowProps) {
         />
         <input
           type="date"
-          aria-label="Bis"
+          aria-label={`Bis (${range.name})`}
           min={MIN_DAY}
           max={MAX_DAY}
           value={draft.end}

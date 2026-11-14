@@ -1,11 +1,11 @@
-import { getRouteApi, useLocation } from '@tanstack/react-router'
-import { useState } from 'react'
+import { getRouteApi, useLocation, useRouter } from '@tanstack/react-router'
+import { useMemo, useState } from 'react'
 import { useKeyState } from '@/features/server/key-store'
 import { PRODUCT_NAME } from '@/lib/brand'
 import { CopyLink, type LinkStatus } from './CopyLink'
 import { HowItWorks } from './HowItWorks'
 import { pollRows } from './poll-data'
-import type { Poll } from './poll-schema'
+import type { UpdatePoll } from './poll-schema'
 import { titleFromSlug } from './poll-slug'
 import { pollFromHash, pollToHash } from './poll-url'
 import { PollChart } from './PollChart'
@@ -18,17 +18,27 @@ const routeApi = getRouteApi('/abstimmung/$name')
 /** `/abstimmung/<name>#d=…`: everything the poll knows is in the address. */
 export function PollPage() {
   const { name } = routeApi.useParams()
+  const router = useRouter()
   const hash = useLocation({ select: (location) => location.hash })
   const navigate = routeApi.useNavigate()
   const { key } = useKeyState()
   const [status, setStatus] = useState<LinkStatus>('initial')
-  const poll = pollFromHash(hash)
+  const poll = useMemo(() => pollFromHash(hash), [hash])
   const title = poll.title ?? titleFromSlug(name)
 
-  function change(next: Poll) {
-    if (next === poll) return
+  /**
+   * Every change goes through here. It reads the poll from the address at call time, because
+   * the rendered poll can be older (a holiday load may finish after other edits). The router's
+   * history is updated at once, unlike the rendered `poll`.
+   */
+  const updatePoll: UpdatePoll = (update, since = router.history.location.pathname) => {
+    if (router.history.location.pathname !== since) return false
+    const latest = pollFromHash(router.history.location.hash)
+    const next = update(latest)
+    if (next === latest) return false
     setStatus('changed')
-    void navigate({ hash: pollToHash(next), replace: true })
+    void navigate({ hash: pollToHash(next), replace: true, resetScroll: false })
+    return true
   }
 
   return (
@@ -47,7 +57,7 @@ export function PollPage() {
           <PollChart rows={pollRows(poll)} />
         )}
         {key !== null && <TakeOver planKey={key} poll={poll} />}
-        <PollEditor poll={poll} onChange={change} />
+        <PollEditor poll={poll} updatePoll={updatePoll} />
       </main>
     </div>
   )

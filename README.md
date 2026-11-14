@@ -48,7 +48,7 @@ family is, who takes care of the children, and how many leave days each parent h
 5. **Or just run a poll.** On the start screen choose "Abstimmung starten", name the poll, add
    families (load their school holidays or enter ranges by hand) and send the link. The others add
    their times and send the new link back. Everything is stored in the link only (after the `#`,
-   so no server ever sees it), and every change gives a new link.
+   which no server receives); the poll's name is in the address, and every change gives a new link.
 
 Several people can edit at the same time; if two saves collide, the later one is offered the chance
 to overwrite ("Meine Änderung trotzdem speichern"). Without a connection the change stays on screen

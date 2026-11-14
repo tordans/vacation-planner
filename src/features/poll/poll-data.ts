@@ -2,6 +2,11 @@ import { yearOf } from '@/lib/dates'
 import {
   CHANCEN_SECTION,
   isPollDay,
+  MAX_FAMILIES,
+  MAX_FAMILY_NAME_LENGTH,
+  MAX_RANGE_NAME_LENGTH,
+  MAX_RANGES_PER_SECTION,
+  MAX_SECTIONS,
   type Poll,
   type PollRange,
   type PollSection,
@@ -62,14 +67,33 @@ function withSection(
   }
 }
 
-function cleanRange(id: string, input: RangeInput): PollRange {
-  return { id, name: input.name.trim(), start: input.start, end: input.end }
+/** Trimmed and cut to the length the schema accepts; every write path goes through it. */
+function cleanName(name: string, maxLength: number) {
+  return name.trim().slice(0, maxLength).trim()
 }
 
-/** Adds a family before the Chancen section. Unchanged (same object) for empty or taken names. */
+function cleanInput(input: RangeInput): RangeInput {
+  return {
+    name: cleanName(input.name, MAX_RANGE_NAME_LENGTH),
+    start: input.start,
+    end: input.end,
+  }
+}
+
+function cleanRange(id: string, input: RangeInput): PollRange {
+  return { id, ...cleanInput(input) }
+}
+
+function sameRange(a: RangeInput, b: RangeInput) {
+  return a.name === b.name && a.start === b.start && a.end === b.end
+}
+
+/** Adds a family before the Chancen section. Unchanged (same object) for empty, taken or
+ * "Chancen" names, and when the poll already has the most families the schema allows. */
 export function addFamily(poll: Poll, name: string): Poll {
-  const trimmed = name.trim()
-  if (trimmed === '' || findSection(poll, trimmed)) return poll
+  const trimmed = cleanName(name, MAX_FAMILY_NAME_LENGTH)
+  if (trimmed === '' || isChancen(trimmed) || findSection(poll, trimmed)) return poll
+  if (familiesOf(poll).length >= MAX_FAMILIES) return poll
   const family: PollSection = { name: trimmed, ranges: [] }
   const chancenIndex = poll.sections.findIndex((section) => isChancen(section.name))
   if (chancenIndex === -1) return { ...poll, sections: [...poll.sections, family] }
@@ -85,7 +109,7 @@ export function addFamily(poll: Poll, name: string): Poll {
 
 /** Unchanged (same object) when the new name is empty, taken or "Chancen". */
 export function renameFamily(poll: Poll, from: string, to: string): Poll {
-  const trimmed = to.trim()
+  const trimmed = cleanName(to, MAX_FAMILY_NAME_LENGTH)
   if (trimmed === '' || trimmed === from || isChancen(from) || isChancen(trimmed)) return poll
   if (poll.sections.some((section) => sameName(section.name, trimmed) && section.name !== from)) {
     return poll
@@ -97,17 +121,24 @@ export function removeFamily(poll: Poll, name: string): Poll {
   return { ...poll, sections: poll.sections.filter((section) => !sameName(section.name, name)) }
 }
 
-/** Adds a range to a family, or to Chancen (created on demand). Unchanged when invalid. */
+/**
+ * Adds a range to a family, or to Chancen (created on demand). Unchanged when invalid, when the
+ * section is full or already has the same range, and when Chancen would be one section too many.
+ */
 export function addRange(poll: Poll, sectionName: string, input: RangeInput): Poll {
   if (rangeProblem(input) !== null) return poll
-  const range = cleanRange(nextRangeId(poll), input)
-  if (findSection(poll, sectionName)) {
-    return withSection(poll, sectionName, (section) => ({
-      ...section,
-      ranges: [...section.ranges, range],
+  const section = findSection(poll, sectionName)
+  if (section) {
+    if (section.ranges.length >= MAX_RANGES_PER_SECTION) return poll
+    if (section.ranges.some((range) => sameRange(range, cleanInput(input)))) return poll
+    const range = cleanRange(nextRangeId(poll), input)
+    return withSection(poll, sectionName, (current) => ({
+      ...current,
+      ranges: [...current.ranges, range],
     }))
   }
-  if (!isChancen(sectionName)) return poll
+  if (!isChancen(sectionName) || poll.sections.length >= MAX_SECTIONS) return poll
+  const range = cleanRange(nextRangeId(poll), input)
   return { ...poll, sections: [...poll.sections, { name: CHANCEN_SECTION, ranges: [range] }] }
 }
 
@@ -139,7 +170,10 @@ export function setFederalState(poll: Poll, familyName: string, federalState: st
   return withSection(poll, familyName, (section) => ({ ...section, federalState }))
 }
 
-/** Adds loaded holidays to a family and remembers its federal state. Skips what is already there. */
+/**
+ * Adds loaded holidays to a family and remembers its federal state. Holidays already there and
+ * those beyond the family's limit are skipped (see `holidaysClipped`).
+ */
 export function addHolidays(
   poll: Poll,
   familyName: string,
@@ -147,15 +181,17 @@ export function addHolidays(
   holidays: RangeInput[],
 ): Poll {
   let next = setFederalState(poll, familyName, federalState)
-  for (const holiday of holidays) {
-    const existing = findSection(next, familyName)?.ranges ?? []
-    const known = existing.some(
-      (range) =>
-        range.name === holiday.name && range.start === holiday.start && range.end === holiday.end,
-    )
-    if (!known) next = addRange(next, familyName, holiday)
-  }
+  for (const holiday of holidays) next = addRange(next, familyName, holiday)
   return next
+}
+
+/** True when `addHolidays` had to leave some of `holidays` out because the family is full. */
+export function holidaysClipped(poll: Poll, familyName: string, holidays: RangeInput[]) {
+  const family = findSection(poll, familyName)
+  if (!family || family.ranges.length < MAX_RANGES_PER_SECTION) return false
+  return holidays.some(
+    (holiday) => !family.ranges.some((range) => sameRange(range, cleanInput(holiday))),
+  )
 }
 
 /** One line of the chart. A family without ranges gets a line with `range: null`. */

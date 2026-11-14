@@ -47,11 +47,21 @@ function PrivacyDialog({ open, onClose }: { open: boolean; onClose: () => void }
           </p>
         </Section>
         <Section title="Abstimmungen">
-          <p>
-            Abstimmungen gehen nie an unseren Server. Ihre Einträge stehen nur im Link, im Teil nach
-            dem #, und den sendet dein Browser an keinen Server. Wer den Link hat, sieht alles
-            darin.
-          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>
+              Die Einträge einer Abstimmung stehen nur im Link nach dem „#“; dieser Teil wird nie an
+              einen Server geschickt, auch nicht an unseren.
+            </li>
+            <li>
+              Der Name der Abstimmung steht vorne in der Adresse (z. B. /abstimmung/sommer-2027) und
+              erscheint damit wie jede aufgerufene Seite im Zugriffsprotokoll des Hosters.
+            </li>
+            <li>
+              Wer etwas über „In deinen Plan übernehmen“ in seinen Plan übernimmt, speichert es
+              damit im Plan auf unserem Server, wie jede andere Änderung am Plan.
+            </li>
+            <li>Der Link bleibt im Browserverlauf, wie jede Adresse.</li>
+          </ul>
         </Section>
         <Section title="Was sonst anfällt">
           <p>

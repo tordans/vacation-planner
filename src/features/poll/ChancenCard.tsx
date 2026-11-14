@@ -1,15 +1,15 @@
 import { AddRangeForm } from './AddRangeForm'
 import { addRange, chancenOf } from './poll-data'
-import { CHANCEN_SECTION, type Poll } from './poll-schema'
+import { CHANCEN_SECTION, MAX_RANGES_PER_SECTION, type Poll, type UpdatePoll } from './poll-schema'
 import { RangeList } from './RangeList'
 
 type ChancenCardProps = {
   poll: Poll
-  onChange: (poll: Poll) => void
+  updatePoll: UpdatePoll
 }
 
 /** Windows in which everyone could meet; the chart highlights them across all families. */
-export function ChancenCard({ poll, onChange }: ChancenCardProps) {
+export function ChancenCard({ poll, updatePoll }: ChancenCardProps) {
   const chancen = chancenOf(poll) ?? { name: CHANCEN_SECTION, ranges: [] }
   return (
     <section className="space-y-4 rounded-lg bg-emerald-50 p-4 ring-1 ring-emerald-200">
@@ -19,10 +19,11 @@ export function ChancenCard({ poll, onChange }: ChancenCardProps) {
           Zeiträume, in denen es für alle passen könnte. Sie sind in der Übersicht grün hinterlegt.
         </p>
       </div>
-      <RangeList poll={poll} section={chancen} onChange={onChange} />
+      <RangeList section={chancen} updatePoll={updatePoll} />
       <AddRangeForm
         namePlaceholder="Besuch bei Oma"
-        onAdd={(input) => onChange(addRange(poll, CHANCEN_SECTION, input))}
+        full={chancen.ranges.length >= MAX_RANGES_PER_SECTION}
+        onAdd={(input) => updatePoll((latest) => addRange(latest, CHANCEN_SECTION, input))}
       />
     </section>
   )

@@ -64,10 +64,19 @@ Datenbank enthält keine E-Mail-Adressen und keine Klar-IP-Adressen.
 
 Die Abstimmung unter `/abstimmung/…` ist unabhängig von Plänen. Ihre Einträge (Name der Abstimmung,
 Namen der Familien, Zeiträume, Bundesland) stehen komprimiert im Fragment der Adresse (`#d=…`) und
-**nur dort**. Sie gehen nie an unseren Server: Der Teil nach `#` wird von Browsern an keinen Server
-gesendet und steht deshalb auch in keinem Zugriffsprotokoll. Die App speichert sie weder auf dem
-Server noch im Browser. Wer den Link hat, sieht alles darin, und jede Änderung erzeugt einen neuen
-Link. Lädt jemand Ferien oder Feiertage, ruft der Browser wie im Plan mehr-schulferien.de auf.
+**nur dort**. Dabei gilt:
+
+- Die Einträge stehen nur im Link nach dem „#“; dieser Teil wird nie an einen Server geschickt,
+  auch nicht an unseren.
+- Der Name der Abstimmung steht vorne in der Adresse (z. B. `/abstimmung/sommer-2027`) und erscheint
+  damit wie jede aufgerufene Seite im Zugriffsprotokoll des Hosters.
+- Wer etwas über „In deinen Plan übernehmen“ in seinen Plan übernimmt, speichert es damit im Plan auf
+  unserem Server, wie jede andere Änderung am Plan.
+- Der Link bleibt im Browserverlauf, wie jede Adresse.
+
+Die App speichert die Abstimmung selbst nicht; wer den Link hat, sieht alles darin, und jede
+Änderung erzeugt einen neuen Link. Lädt jemand Ferien oder Feiertage, ruft der Browser wie im Plan
+mehr-schulferien.de auf.
 
 Wer auf demselben Gerät einen Plan geöffnet hat, kann Einträge einer Abstimmung in diesen Plan
 übernehmen, und aus einem Plan lässt sich eine Abstimmung mit den eigenen Schulferien und Ideen

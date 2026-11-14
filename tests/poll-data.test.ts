@@ -4,6 +4,7 @@ import {
   addFamily,
   addHolidays,
   addRange,
+  holidaysClipped,
   pollRows,
   removeFamily,
   removeRange,
@@ -12,6 +13,7 @@ import {
   updateRange,
 } from '@/features/poll/poll-data'
 import { EMPTY_POLL, type Poll } from '@/features/poll/poll-schema'
+import { pollFromHash, pollToHash } from '@/features/poll/poll-url'
 
 const summer = { name: 'Sommerurlaub', start: '2027-07-12', end: '2027-07-30' }
 
@@ -168,5 +170,60 @@ describe('rows', () => {
       ['Familie B', 'family', null],
       ['Chancen', 'chancen', 'Besuch'],
     ])
+  })
+})
+
+describe('writer limits', () => {
+  const dayOf = (index: number) => new Date(Date.UTC(2027, 0, 1 + index)).toISOString().slice(0, 10)
+  const ranges = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      name: `Zeit ${index}`,
+      start: dayOf(index),
+      end: dayOf(index),
+    }))
+
+  it('never makes a family called Chancen', () => {
+    expect(addFamily(EMPTY_POLL, 'Chancen')).toBe(EMPTY_POLL)
+    expect(addFamily(EMPTY_POLL, ' chancen ')).toBe(EMPTY_POLL)
+  })
+
+  it('refuses more than 30 families but still allows the Chancen section', () => {
+    let poll = EMPTY_POLL
+    for (let index = 0; index < 30; index++) poll = addFamily(poll, `Familie ${index}`)
+    expect(poll.sections).toHaveLength(30)
+    expect(addFamily(poll, 'Familie 30')).toBe(poll)
+    const withChancen = addRange(poll, 'Chancen', summer)
+    expect(withChancen.sections).toHaveLength(31)
+    expect(pollFromHash(`#${pollToHash(withChancen)}`).sections).toHaveLength(31)
+  })
+
+  it('caps the ranges of a section at 200 and skips holidays beyond it', () => {
+    let poll = addFamily(EMPTY_POLL, 'A')
+    for (const range of ranges(198)) poll = addRange(poll, 'A', range)
+    const holidays = ranges(203).slice(198)
+    const next = addHolidays(poll, 'A', 'BE', holidays)
+    expect(next.sections[0]?.ranges).toHaveLength(200)
+    expect(holidaysClipped(next, 'A', holidays)).toBe(true)
+    expect(addRange(next, 'A', summer)).toBe(next)
+    expect(holidaysClipped(next, 'A', ranges(3))).toBe(false)
+  })
+
+  it('trims names and cuts them to the schema lengths on every path', () => {
+    let poll = addFamily(EMPTY_POLL, `  ${'F'.repeat(70)} `)
+    const family = poll.sections[0]!.name
+    expect(family).toHaveLength(60)
+    const long = `  ${'x'.repeat(100)}  `
+    poll = addRange(poll, family, { name: long, start: '2027-07-01', end: '2027-07-02' })
+    poll = addHolidays(poll, family, 'BE', [{ name: long, start: '2027-08-01', end: '2027-08-02' }])
+    expect(poll.sections[0]?.ranges.map((range) => range.name)).toEqual([
+      'x'.repeat(80),
+      'x'.repeat(80),
+    ])
+  })
+
+  it('ignores an exact duplicate range in the same section', () => {
+    const poll = addRange(addFamily(EMPTY_POLL, 'A'), 'A', summer)
+    expect(addRange(poll, 'A', summer)).toBe(poll)
+    expect(addRange(poll, 'A', { ...summer, name: 'Anderer Name' })).not.toBe(poll)
   })
 })

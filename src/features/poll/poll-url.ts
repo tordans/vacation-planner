@@ -6,6 +6,8 @@ import { EMPTY_POLL, pollSchema, type Poll } from './poll-schema'
  * of the compressed text (letters, digits, `+`, `-`, `$`) is valid there as it is.
  */
 const HASH_PREFIX = 'd='
+/** Longer data is refused before it is decompressed: a poll this size is not made by hand. */
+const MAX_DATA_LENGTH = 100_000
 
 /** The fragment for a poll, without `#`; empty for a poll that has nothing in it yet. */
 export function pollToHash(poll: Poll): string {
@@ -31,7 +33,7 @@ function dataOfHash(hash: string): string | null {
 /** Reads `#d=…`. A missing, damaged or unexpected value is an empty poll. */
 export function pollFromHash(hash: string): Poll {
   const encoded = dataOfHash(hash)
-  if (!encoded) return EMPTY_POLL
+  if (!encoded || encoded.length > MAX_DATA_LENGTH) return EMPTY_POLL
   try {
     const json = decompressFromEncodedURIComponent(encoded)
     if (!json) return EMPTY_POLL

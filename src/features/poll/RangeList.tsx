@@ -1,15 +1,14 @@
 import { removeRange, updateRange } from './poll-data'
-import type { Poll, PollSection } from './poll-schema'
+import type { PollSection, UpdatePoll } from './poll-schema'
 import { RangeRow } from './RangeRow'
 
 type RangeListProps = {
-  poll: Poll
   section: PollSection
-  onChange: (poll: Poll) => void
+  updatePoll: UpdatePoll
 }
 
 /** The editable ranges of one section. */
-export function RangeList({ poll, section, onChange }: RangeListProps) {
+export function RangeList({ section, updatePoll }: RangeListProps) {
   if (section.ranges.length === 0) return null
   return (
     <ul className="space-y-3">
@@ -18,8 +17,10 @@ export function RangeList({ poll, section, onChange }: RangeListProps) {
           // New key on every change, so the row starts over from the saved values.
           key={`${range.id}|${range.name}|${range.start}|${range.end}`}
           range={range}
-          onChange={(input) => onChange(updateRange(poll, section.name, range.id, input))}
-          onRemove={() => onChange(removeRange(poll, section.name, range.id))}
+          onChange={(input) =>
+            updatePoll((latest) => updateRange(latest, section.name, range.id, input))
+          }
+          onRemove={() => updatePoll((latest) => removeRange(latest, section.name, range.id))}
         />
       ))}
     </ul>

@@ -56,6 +56,10 @@ describe('poll link', () => {
     expect(pollFromHash(wrong)).toEqual(EMPTY_POLL)
   })
 
+  it('refuses data longer than 100 000 characters before decompressing it', () => {
+    expect(pollFromHash(`#d=${'A'.repeat(100_001)}`)).toEqual(EMPTY_POLL)
+  })
+
   it('drops an unknown federal state or an oversized title but keeps the rest', () => {
     const hash = pollToHash({
       title: 'x'.repeat(81),

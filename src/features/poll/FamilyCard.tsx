@@ -2,19 +2,18 @@ import { TrashIcon } from '@heroicons/react/20/solid'
 import { inputClass } from '@/components/ui/classes'
 import { AddRangeForm } from './AddRangeForm'
 import { LoadHolidays } from './LoadHolidays'
-import { addHolidays, addRange, removeFamily, renameFamily } from './poll-data'
-import type { Poll, PollSection } from './poll-schema'
+import { addHolidays, addRange, holidaysClipped, removeFamily, renameFamily } from './poll-data'
+import { MAX_RANGES_PER_SECTION, type PollSection, type UpdatePoll } from './poll-schema'
 import { RangeList } from './RangeList'
 
 type FamilyCardProps = {
-  poll: Poll
   family: PollSection
   defaultYear: number
-  onChange: (poll: Poll) => void
+  updatePoll: UpdatePoll
 }
 
 /** One family: its name, its ranges and the ways to fill them. */
-export function FamilyCard({ poll, family, defaultYear, onChange }: FamilyCardProps) {
+export function FamilyCard({ family, defaultYear, updatePoll }: FamilyCardProps) {
   function remove() {
     const count = family.ranges.length
     if (
@@ -23,7 +22,7 @@ export function FamilyCard({ poll, family, defaultYear, onChange }: FamilyCardPr
     ) {
       return
     }
-    onChange(removeFamily(poll, family.name))
+    updatePoll((latest) => removeFamily(latest, family.name))
   }
 
   return (
@@ -38,10 +37,11 @@ export function FamilyCard({ poll, family, defaultYear, onChange }: FamilyCardPr
             if (event.key === 'Enter') event.currentTarget.blur()
           }}
           onBlur={(event) => {
-            const next = renameFamily(poll, family.name, event.currentTarget.value)
+            const value = event.currentTarget.value
             // Empty or taken names are not applied: show the saved name again.
-            if (next === poll) event.currentTarget.value = family.name
-            else onChange(next)
+            if (!updatePoll((latest) => renameFamily(latest, family.name, value))) {
+              event.currentTarget.value = family.name
+            }
           }}
         />
         <button
@@ -53,10 +53,11 @@ export function FamilyCard({ poll, family, defaultYear, onChange }: FamilyCardPr
           <TrashIcon className="size-4" />
         </button>
       </div>
-      <RangeList poll={poll} section={family} onChange={onChange} />
+      <RangeList section={family} updatePoll={updatePoll} />
       <AddRangeForm
         namePlaceholder="Sommerurlaub"
-        onAdd={(input) => onChange(addRange(poll, family.name, input))}
+        full={family.ranges.length >= MAX_RANGES_PER_SECTION}
+        onAdd={(input) => updatePoll((latest) => addRange(latest, family.name, input))}
       />
       <details open={family.ranges.length === 0} className="group">
         <summary className="cursor-pointer text-sm font-medium text-sky-700 hover:text-sky-900">
@@ -66,9 +67,15 @@ export function FamilyCard({ poll, family, defaultYear, onChange }: FamilyCardPr
           <LoadHolidays
             federalState={family.federalState}
             defaultYear={defaultYear}
-            onLoad={(federalState, ranges) =>
-              onChange(addHolidays(poll, family.name, federalState, ranges))
-            }
+            onLoad={(federalState, ranges, since) => {
+              let clipped = false
+              updatePoll((latest) => {
+                const next = addHolidays(latest, family.name, federalState, ranges)
+                clipped = holidaysClipped(next, family.name, ranges)
+                return next
+              }, since)
+              return clipped
+            }}
           />
         </div>
       </details>

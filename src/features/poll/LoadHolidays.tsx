@@ -1,19 +1,24 @@
 import { useMutation } from '@tanstack/react-query'
+import { useRouter } from '@tanstack/react-router'
 import { useId, useState } from 'react'
 import { buttonClass, inputClass, linkClass } from '@/components/ui/classes'
 import { FEDERAL_STATES, federalStateByCode } from '@/features/holidays/federal-states'
 import { fetchHolidayRanges } from './fetch-holiday-ranges'
-import type { RangeInput } from './poll-schema'
+import { MAX_RANGES_PER_SECTION, type RangeInput } from './poll-schema'
 
 const DEFAULT_FEDERAL_STATE = 'BE'
-const FIRST_YEAR = 2020
-const LAST_YEAR = 2040
+export const FIRST_YEAR = 2020
+export const LAST_YEAR = 2040
 
 type LoadHolidaysProps = {
   /** The family's federal state from an earlier load. */
   federalState: string | undefined
   defaultYear: number
-  onLoad: (federalState: string, ranges: RangeInput[]) => void
+  /**
+   * Gets the loaded ranges. `since` is the pathname when the load started, for `updatePoll`.
+   * Returns true when some of the ranges did not fit.
+   */
+  onLoad: (federalState: string, ranges: RangeInput[], since: string) => boolean
 }
 
 /**
@@ -22,20 +27,26 @@ type LoadHolidaysProps = {
  */
 export function LoadHolidays({ federalState, defaultYear, onLoad }: LoadHolidaysProps) {
   const id = useId()
+  const router = useRouter()
   const [code, setCode] = useState(federalState ?? DEFAULT_FEDERAL_STATE)
   const [year, setYear] = useState(defaultYear)
   const [withPublicHolidays, setWithPublicHolidays] = useState(false)
   const [empty, setEmpty] = useState(false)
+  const [clipped, setClipped] = useState(false)
   const mutation = useMutation({ mutationFn: fetchHolidayRanges })
+  const yearValid = Number.isInteger(year) && year >= FIRST_YEAR && year <= LAST_YEAR
 
   function load() {
+    if (!yearValid) return
     setEmpty(false)
+    setClipped(false)
+    const since = router.history.location.pathname
     mutation.mutate(
       { code, year, withPublicHolidays },
       {
         onSuccess: (ranges) => {
           if (ranges.length === 0) setEmpty(true)
-          else onLoad(code, ranges)
+          else setClipped(onLoad(code, ranges, since))
         },
       },
     )
@@ -81,7 +92,7 @@ export function LoadHolidays({ federalState, defaultYear, onLoad }: LoadHolidays
             className={inputClass}
           />
         </div>
-        <button type="submit" className={buttonClass} disabled={mutation.isPending}>
+        <button type="submit" className={buttonClass} disabled={mutation.isPending || !yearValid}>
           {mutation.isPending ? 'Wird geladen …' : 'Ferien laden'}
         </button>
       </div>
@@ -94,9 +105,19 @@ export function LoadHolidays({ federalState, defaultYear, onLoad }: LoadHolidays
         />
         Feiertage und Brückentage mit laden
       </label>
+      {!yearValid && (
+        <p role="alert" className="text-sm text-red-800">
+          Bitte ein Jahr zwischen {FIRST_YEAR} und {LAST_YEAR} wählen.
+        </p>
+      )}
       {mutation.isError && (
         <p role="alert" className="text-sm text-red-800">
           Ferien konnten nicht geladen werden. Bitte später noch einmal versuchen.
+        </p>
+      )}
+      {clipped && (
+        <p role="status" className="text-sm text-amber-900">
+          Höchstens {MAX_RANGES_PER_SECTION} Zeiträume je Familie – ein Teil wurde nicht übernommen.
         </p>
       )}
       {empty && (
