@@ -76,7 +76,6 @@ fetch /api/plan -X PUT -H 'Content-Type: application/json' --data '{"data":{}}'
 if [ "$status" = 401 ]; then pass "PUT /api/plan without key -> 401"; else fail "PUT /api/plan without key -> $status (expected 401)"; fi
 fetch /api/plan -H 'Authorization: Bearer check-with-a-wrong-key'
 if [ "$status" = 401 ]; then pass "/api/plan with a wrong key -> 401"; else fail "/api/plan with a wrong key -> $status (expected 401)"; fi
-expect_status /api/migrate 405 '/api/migrate with GET (no deploy key needed to see the method)'
 
 # 5. nothing hidden is served
 fetch /.htaccess

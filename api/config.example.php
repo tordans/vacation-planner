@@ -29,9 +29,6 @@ return [
     // sha256 (hex) of the view key: read only. Link: https://urlaub.ingsparks.de/#key=<viewKey>.
     'view_key_sha256' => '',
 
-    // sha256 (hex) of the deploy key. Only allows POST /api/migrate (X-Deploy-Key header).
-    'deploy_key_sha256' => '',
-
     // Git commit of the deployed build, shown by GET /api/health.
     'commit' => 'dev',
 

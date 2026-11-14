@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Guided setup of the GitHub environment secrets for the deploy workflow (docs/deploy.md, sections 2 + 3).
-# Generates the edit, view and deploy keys, asks for the FTP and database values, and stores
+# Generates the edit and view keys, asks for the FTP and database values, and stores
 # everything with `gh secret set --env production`. Nothing is written to disk.
 #
 # Usage: [FTP_SERVER=… FTP_USERNAME=… DB_HOST=… DB_NAME=… DB_USER=…] scripts/setup-deploy-secrets.sh [owner/repo]
@@ -45,7 +45,6 @@ echo
 echo "Erzeuge Schlüssel …"
 EDIT_KEY=$(random_key)
 VIEW_KEY=$(random_key)
-DEPLOY_KEY=$(random_key)
 
 echo "Speichere Secrets in GitHub …"
 put FTP_SERVER "$FTP_SERVER"
@@ -57,7 +56,6 @@ put DB_USER "$DB_USER"
 put DB_PASSWORD "$DB_PASSWORD"
 put EDIT_KEY_SHA256 "$(sha256 "$EDIT_KEY")"
 put VIEW_KEY_SHA256 "$(sha256 "$VIEW_KEY")"
-put DEPLOY_KEY "$DEPLOY_KEY"
 
 cat <<EOF
 
@@ -65,7 +63,6 @@ Fertig. Diese Werte jetzt in den Passwort-Manager übernehmen – sie werden nir
 
   Bearbeiten-Schlüssel:  $EDIT_KEY
   Lese-Schlüssel:        $VIEW_KEY
-  Deploy-Schlüssel:      $DEPLOY_KEY
 
 Links für die Familie:
   Eltern (bearbeiten):        $SITE_URL/#key=$EDIT_KEY

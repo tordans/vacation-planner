@@ -5,6 +5,7 @@
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
+    "prepare": "husky",
     "dev": "FORCE_COLOR=1 bun --bun vite",
     "dev-api": "docker build -q -t vacation-planner-api-test -f api/Dockerfile.test api >/dev/null && docker run --rm -p 8787:8787 -e PLAN_CONFIG=/app/config.dev.php -v \"$PWD/api\":/app -w /app vacation-planner-api-test sh -c 'mkdir -p dev && php -S 0.0.0.0:8787 public/index.php'",
     "build": "bun --bun vite build",
@@ -31,7 +32,6 @@
     "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-router": "^1.170.32",
     "date-fns": "^4.4.0",
-    "lz-string": "^1.5.0",
     "motion": "^13.1.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -48,6 +48,7 @@
     "browserslist-to-esbuild": "^2.1.1",
     "bun-types": "^1.4.0",
     "eslint-plugin-compat": "^7.0.2",
+    "husky": "^9.1.7",
     "knip": "^6.33.0",
     "oxc-transform-react": "^0.147.0",
     "oxfmt": "^0.71.0",

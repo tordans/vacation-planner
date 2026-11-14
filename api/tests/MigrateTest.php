@@ -7,32 +7,65 @@ namespace VacationPlanner\Api\Tests;
 use VacationPlanner\Api\Migrator;
 use VacationPlanner\Api\Tests\Support\ApiTestCase;
 
+/** The API applies the migrations itself before the first request that needs the database. */
 final class MigrateTest extends ApiTestCase
 {
-    protected function setUp(): void
+    /** @var list<string> temporary migration folders, removed in tearDown() */
+    private array $dirs = [];
+
+    protected function tearDown(): void
     {
-        parent::setUp();
-        // Start from an empty database; the base class already applied the migrations.
-        foreach (['plan', 'migrations'] as $table) {
+        foreach ($this->dirs as $dir) {
+            array_map('unlink', glob($dir . '/*') ?: []);
+            rmdir($dir);
+        }
+        foreach (['t_once', 't_race'] as $table) {
             $this->db->pdo->exec('DROP TABLE IF EXISTS ' . $table);
         }
+        parent::tearDown();
     }
 
-    public function testMigrateCreatesSchemaAndIsIdempotent(): void
+    public function testFirstPlanRequestCreatesThePlanTable(): void
     {
-        $r = $this->call('POST', '/api/migrate', headers: ['X-Deploy-Key' => self::DEPLOY_KEY], auth: false);
+        self::assertFalse($this->tableExists('plan'), 'a fresh database has no tables');
+
+        $r = $this->call('GET', '/api/plan');
         self::assertSame(200, $r->status);
-        self::assertSame(['applied' => ['001_init.sql']], $r->data());
+        self::assertSame(['role' => 'edit', 'plan' => null], $r->data());
 
-        self::assertSame('001_init.sql', $this->db->one('SELECT name FROM migrations')['name']);
-        // The plan table exists and is usable.
-        $this->db->run("INSERT INTO plan (id, data, version, updated_at) VALUES (1, '{}', 1, '2026-01-01 00:00:00.000')");
-        self::assertSame(1, (int) $this->db->one('SELECT COUNT(*) AS n FROM plan')['n']);
+        self::assertTrue($this->tableExists('plan'));
+        self::assertSame(['001_init.sql'], array_column($this->db->all('SELECT name FROM migrations'), 'name'));
+    }
 
-        $again = $this->call('POST', '/api/migrate', headers: ['X-Deploy-Key' => self::DEPLOY_KEY], auth: false);
-        self::assertSame(['applied' => []], $again->data());
+    public function testLaterRequestsApplyNothing(): void
+    {
+        // 002 fails when it runs a second time (no IF NOT EXISTS), so a re-run would show as a 500.
+        $this->app = $this->makeApp(migrationsDir: $this->migrationsFolder([
+            '001_init.sql' => (string) file_get_contents($this->migrationsDir . '/001_init.sql'),
+            '002_once.sql' => "CREATE TABLE t_once (id INTEGER NOT NULL PRIMARY KEY);\n",
+        ]));
+
+        self::assertSame(200, $this->call('GET', '/api/plan')->status, 'first request applies 001 and 002');
+        self::assertSame(200, $this->call('GET', '/api/plan')->status, 'second request applies nothing');
+        self::assertSame(200, $this->call('PUT', '/api/plan', ['data' => ['v' => 1]], ['If-None-Match' => '*'])->status);
+        self::assertSame(
+            ['001_init.sql', '002_once.sql'],
+            array_column($this->db->all('SELECT name FROM migrations ORDER BY name'), 'name'),
+        );
+    }
+
+    public function testMigrationRecordedByAConcurrentRequestDoesNotFail(): void
+    {
+        // Simulates another request that records 001 between this request's read of the applied
+        // names and its own INSERT: the primary key refuses the second row, which is not an error.
+        $dir = $this->migrationsFolder([
+            '001_race.sql' => "CREATE TABLE IF NOT EXISTS t_race (id INTEGER NOT NULL PRIMARY KEY);\n"
+                . "INSERT INTO migrations (name, applied_at) VALUES ('001_race.sql', '2026-01-01 00:00:00');\n",
+        ]);
+
+        self::assertSame([], (new Migrator($this->db, $dir))->migrate());
         self::assertSame(1, (int) $this->db->one('SELECT COUNT(*) AS n FROM migrations')['n']);
-        self::assertSame(1, (int) $this->db->one('SELECT COUNT(*) AS n FROM plan')['n'], 'data survives a second migrate');
+        self::assertTrue($this->tableExists('t_race'));
     }
 
     public function testAppliesOnlyPendingMigrationsInOrder(): void
@@ -55,15 +88,32 @@ final class MigrateTest extends ApiTestCase
             foreach (['t_a', 't_b', 't_c', 't_d'] as $table) {
                 $this->db->pdo->exec("DROP TABLE IF EXISTS $table");
             }
-            array_map('unlink', glob($dir . '/*'));
+            array_map('unlink', glob($dir . '/*') ?: []);
             rmdir($dir);
         }
     }
 
-    public function testApiWithoutMigrationFailsGenericallyNotWithDbDetails(): void
+    /** @param array<string, string> $files file name => SQL; returns a temporary migrations folder */
+    private function migrationsFolder(array $files): string
     {
-        $r = $this->call('GET', '/api/plan');
-        self::assertSame(500, $r->status);
-        self::assertSame(['error' => 'internal_error'], $r->data());
+        $dir = sys_get_temp_dir() . '/migrations-' . bin2hex(random_bytes(4));
+        mkdir($dir);
+        $this->dirs[] = $dir;
+        foreach ($files as $name => $sql) {
+            file_put_contents($dir . '/' . $name, $sql);
+        }
+
+        return $dir;
+    }
+
+    private function tableExists(string $table): bool
+    {
+        try {
+            $this->db->run("SELECT 1 FROM $table");
+
+            return true;
+        } catch (\PDOException) {
+            return false;
+        }
     }
 }

@@ -17,7 +17,6 @@ final class ConfigTest extends TestCase
         self::assertNull($config->logFile());
         self::assertSame('', $config->editKeySha256());
         self::assertSame('', $config->viewKeySha256());
-        self::assertSame('', $config->deployKeySha256());
     }
 
     public function testMissingFileThrows(): void

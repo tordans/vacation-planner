@@ -79,12 +79,6 @@ final class Config
         return $this->string(['view_key_sha256']);
     }
 
-    /** sha256 hex of the deploy key (POST /api/migrate only). */
-    public function deployKeySha256(): string
-    {
-        return $this->string(['deploy_key_sha256']);
-    }
-
     public function commit(): string
     {
         $v = $this->string(['commit']);

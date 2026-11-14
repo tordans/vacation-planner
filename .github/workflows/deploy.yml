@@ -1,8 +1,9 @@
 name: Deploy
 
-# Tests and builds the app and the API, uploads both to the all-inkl webspace via FTPS, migrates the
-# database and checks that the new commit is live. See docs/deploy.md for the one-time setup and
-# the list of secrets (GitHub environment "production").
+# Builds the app and the API, uploads both to the all-inkl webspace via FTPS and checks that the new
+# commit is live. The API applies database migrations itself. Tests run locally before each push
+# (Husky pre-push hook), not here. See docs/deploy.md for the one-time setup, the list of secrets
+# (GitHub environment "production") and the local checks.
 
 on:
   push:
@@ -32,23 +33,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
 
       - run: bun install --frozen-lockfile
-
-      - name: Check (types, lint, format, tests)
-        run: bun run check-ci
-
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.5'
-          extensions: pdo_sqlite, mbstring, curl, openssl
-          tools: composer:v2
-          coverage: none
-
-      - name: API tests (with dev dependencies)
-        working-directory: api
-        run: |
-          composer install --no-interaction --prefer-dist --no-progress
-          find src public tests -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
-          vendor/bin/phpunit
 
       - name: Build the app
         run: bun run build
@@ -85,7 +69,6 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           EDIT_KEY_SHA256: ${{ secrets.EDIT_KEY_SHA256 }}
           VIEW_KEY_SHA256: ${{ secrets.VIEW_KEY_SHA256 }}
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
         run: |
           set -euo pipefail
           php > deploy-out/config/config.php <<'PHP'
@@ -114,7 +97,6 @@ jobs:
               ],
               'edit_key_sha256' => $digest('EDIT_KEY_SHA256'),
               'view_key_sha256' => $digest('VIEW_KEY_SHA256'),
-              'deploy_key_sha256' => hash('sha256', $need('DEPLOY_KEY')),
               'commit' => $need('COMMIT'),
           ];
           // The log file sits next to config/ on the server: urlaub/logs/api.log (not public).
@@ -151,15 +133,6 @@ jobs:
           local-dir: ./deploy-index/
           server-dir: ./
           state-name: .ftp-deploy-sync-state-index.json
-
-      - name: Apply database migrations
-        env:
-          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
-        run: |
-          curl --fail-with-body --silent --show-error --max-time 60 \
-            --request POST --header "X-Deploy-Key: ${DEPLOY_KEY}" \
-            "${SITE_URL}/api/migrate"
-          echo
 
       - name: Check the live site
         run: |

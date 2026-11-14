@@ -9,7 +9,6 @@ use VacationPlanner\Api\App;
 use VacationPlanner\Api\Config;
 use VacationPlanner\Api\Db;
 use VacationPlanner\Api\Logger;
-use VacationPlanner\Api\Migrator;
 use VacationPlanner\Api\Request;
 use VacationPlanner\Api\Response;
 
@@ -21,7 +20,6 @@ abstract class ApiTestCase extends TestCase
 {
     protected const EDIT_KEY = 'edit-secret-key';
     protected const VIEW_KEY = 'view-secret-key';
-    protected const DEPLOY_KEY = 'deploy-secret-key';
 
     protected Db $db;
     protected App $app;
@@ -57,23 +55,19 @@ abstract class ApiTestCase extends TestCase
         return new Config($overrides + [
             'edit_key_sha256' => hash('sha256', self::EDIT_KEY),
             'view_key_sha256' => hash('sha256', self::VIEW_KEY),
-            'deploy_key_sha256' => hash('sha256', self::DEPLOY_KEY),
             'commit' => 'abc1234',
         ]);
     }
 
-    protected function makeApp(?Config $config = null, bool $migrate = true): App
+    /** The app migrates the database itself before the first request that needs it. */
+    protected function makeApp(?Config $config = null, ?string $migrationsDir = null): App
     {
-        if ($migrate) {
-            (new Migrator($this->db, $this->migrationsDir))->migrate();
-        }
-
         return new App(
             $config ?? $this->config(),
             fn (): Db => $this->db,
             fn (): \DateTimeImmutable => $this->now,
             new Logger('/dev/null'),
-            $this->migrationsDir,
+            $migrationsDir ?? $this->migrationsDir,
         );
     }
 

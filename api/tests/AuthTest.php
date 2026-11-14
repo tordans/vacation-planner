@@ -30,9 +30,6 @@ final class AuthTest extends ApiTestCase
 
         $notBearer = $this->call($method, $path, rawBody: $body, headers: ['Authorization' => 'Basic ' . self::EDIT_KEY], auth: false);
         self::assertSame(401, $notBearer->status);
-
-        $deploy = $this->call($method, $path, rawBody: $body, headers: ['Authorization' => 'Bearer ' . self::DEPLOY_KEY], auth: false);
-        self::assertSame(401, $deploy->status, 'the deploy key is not a plan key');
     }
 
     public function testEditAndViewKeysAreAccepted(): void
@@ -54,25 +51,21 @@ final class AuthTest extends ApiTestCase
 
     public function testEmptyConfiguredHashNeverAuthenticates(): void
     {
-        $app = $this->makeApp($this->config(['edit_key_sha256' => '', 'view_key_sha256' => '', 'deploy_key_sha256' => '']), migrate: false);
+        $app = $this->makeApp($this->config(['edit_key_sha256' => '', 'view_key_sha256' => '']));
         self::assertSame(401, $app->handle(new Request('GET', '/api/plan', ['Authorization' => 'Bearer ']))->status);
         self::assertSame(401, $app->handle(new Request('PUT', '/api/plan', ['Authorization' => 'Bearer ', 'If-None-Match' => '*']))->status);
-        self::assertSame(401, $app->handle(new Request('POST', '/api/migrate', ['X-Deploy-Key' => '']))->status);
     }
 
     public function testUppercaseHashInConfigStillMatches(): void
     {
-        $app = $this->makeApp($this->config(['edit_key_sha256' => strtoupper(hash('sha256', self::EDIT_KEY))]), migrate: false);
+        $app = $this->makeApp($this->config(['edit_key_sha256' => strtoupper(hash('sha256', self::EDIT_KEY))]));
         $r = $app->handle(new Request('GET', '/api/plan', ['Authorization' => 'Bearer ' . self::EDIT_KEY]));
         self::assertSame(200, $r->status);
     }
 
-    public function testDeployKeyOnlyForMigrate(): void
+    public function testDeployKeyHeaderIsIgnored(): void
     {
-        self::assertSame(401, $this->call('POST', '/api/migrate', auth: false)->status);
-        self::assertSame(401, $this->call('POST', '/api/migrate', headers: ['X-Deploy-Key' => 'wrong'], auth: false)->status);
-        self::assertSame(401, $this->call('POST', '/api/migrate', headers: ['X-Deploy-Key' => self::EDIT_KEY], auth: false)->status, 'an edit key is not a deploy key');
-        self::assertSame(200, $this->call('POST', '/api/migrate', headers: ['X-Deploy-Key' => self::DEPLOY_KEY], auth: false)->status);
-        self::assertSame(401, $this->call('GET', '/api/plan', headers: ['Authorization' => 'Bearer ' . self::DEPLOY_KEY], auth: false)->status);
+        // The X-Deploy-Key header is gone: it grants nothing, on any route.
+        self::assertSame(401, $this->call('GET', '/api/plan', headers: ['X-Deploy-Key' => self::EDIT_KEY], auth: false)->status);
     }
 }

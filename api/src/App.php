@@ -12,7 +12,6 @@ final class App
 {
     private const AUTH_NONE = 'none';
     private const AUTH_PLAN = 'plan';
-    private const AUTH_DEPLOY = 'deploy';
 
     private ?Db $db = null;
     private readonly Auth $auth;
@@ -83,12 +82,11 @@ final class App
             throw new HttpException(413, 'payload_too_large');
         }
 
-        // The role is 'edit' or 'view' for plan routes, 'deploy' for migrate, '' for public routes.
-        // null means the key is missing or unknown. A view key on a write gets 403 in the handler.
+        // The role is 'edit' or 'view' for plan routes, '' for public routes. null means the key is
+        // missing or unknown. A view key on a write gets 403 in the handler.
         $role = match ($route['auth']) {
             self::AUTH_NONE => '',
             self::AUTH_PLAN => $this->auth->role($request),
-            self::AUTH_DEPLOY => $this->auth->deploy($request) ? 'deploy' : null,
         };
         if ($role === null) {
             throw new HttpException(401, 'unauthorized', [], ['WWW-Authenticate' => 'Bearer']);
@@ -109,14 +107,23 @@ final class App
                 'handler' => fn (Request $r, string $role): Response => $this->plan()->get($role)],
             ['path' => '/api/plan', 'methods' => ['PUT'], 'auth' => self::AUTH_PLAN,
                 'handler' => fn (Request $r, string $role): Response => $this->plan()->put($r, $role)],
-            ['path' => '/api/migrate', 'methods' => ['POST'], 'auth' => self::AUTH_DEPLOY,
-                'handler' => fn (): Response => Response::json(200, ['applied' => (new Migrator($this->db(), $this->migrationsDir))->migrate()])],
         ];
     }
 
+    /**
+     * The database with pending migrations applied. Only routes that need the database get here,
+     * never /api/health. Runs once per request (the app is built per request); when nothing is
+     * pending, the migrator costs one query for the names already applied.
+     */
     private function db(): Db
     {
-        return $this->db ??= ($this->dbFactory)();
+        if ($this->db === null) {
+            $db = ($this->dbFactory)();
+            (new Migrator($db, $this->migrationsDir))->migrate();
+            $this->db = $db;
+        }
+
+        return $this->db;
     }
 
     private function plan(): PlanHandler

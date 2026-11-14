@@ -19,21 +19,23 @@ Earlier analyses (central storage, Google Sheets, home NAS) are in [archive/](ar
 - `.htaccess` (HTTPS, `Authorization` passthrough, `/api` → `api/index.php [QSA,END]`, dotfiles
   denied except `/.well-known/`, real 404 for missing `/assets/`, SPA fallback, cache headers,
   security headers, CSP).
-- One workflow `.github/workflows/deploy.yml`, GitHub environment `production`: `check-ci`,
-  `php -l`, PHPUnit, build, assemble, generate `config/config.php` from secrets, two-pass FTPS
-  upload (`index.html` last), `POST /api/migrate` with `X-Deploy-Key`, `api/deploy/check.sh`
-  against the live site, summary on the run page.
+- One workflow `.github/workflows/deploy.yml`, GitHub environment `production`: build, assemble,
+  generate `config/config.php` from secrets, two-pass FTPS upload (`index.html` last),
+  `api/deploy/check.sh` against the live site, summary on the run page. The API applies its
+  migrations itself (no migrate call from the workflow).
 - Keys: the server stores only SHA-256 digests; the keys travel in the URL fragment (`#key=…`);
   `scripts/setup-deploy-secrets.sh` generates keys, asks for FTP/DB values and writes all secrets
   with `gh secret set --env production`.
 
 ## What is different here
 
-| Checking Sparks                           | Vacation Planner                                           |
-| ----------------------------------------- | ---------------------------------------------------------- |
-| One family key, data encrypted in browser | Two keys: **edit** and **view**, plan stored as plain JSON |
-| Web Push, VAPID, cron job, PWA            | none of it                                                 |
-| Several documents and tables              | one table `plan` with one row                              |
+| Checking Sparks                           | Vacation Planner                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------ |
+| One family key, data encrypted in browser | Two keys: **edit** and **view**, plan stored as plain JSON                                 |
+| Web Push, VAPID, cron job, PWA            | none of it                                                                                 |
+| Several documents and tables              | one table `plan` with one row                                                              |
+| Tests and linters in GitHub (`ci.yml`)    | none: `bun run check-pre-push` and `bun run test-php` run locally in a Husky pre-push hook |
+| Deploy step `POST /api/migrate`           | none: the API applies pending migrations before the first request that needs the database  |
 
 No encryption: the view link must work for the grandparents without a passphrase, and the earlier
 decision was "the view link shows everything". Whoever has the server and database password can
@@ -57,13 +59,14 @@ Auth: `Authorization: Bearer <key>`. The server compares `sha256(key)` with
 `edit_key_sha256` and `view_key_sha256` (`hash_equals`) and sets the role `edit` or `view`.
 Unknown or missing key: `401`.
 
-| Method + path       | Auth       | Result                                                                                                                                                                                                                                                                   |
-| ------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /api/health`   | none       | `200 { ok: true, commit }`, works without database                                                                                                                                                                                                                       |
-| `GET /api/plan`     | edit, view | `200 { role, plan: { version, updatedAt, data } \| null }` + `ETag: "<version>"` when a plan exists. `plan` is `null` before the first save                                                                                                                              |
-| `PUT /api/plan`     | edit       | body `{ data }`. `If-Match: "<version>"` updates, `If-None-Match: *` creates. `200 { version, updatedAt }` + `ETag`. `409 { plan: { version, updatedAt, data } }` when the version is stale or a plan already exists; `428` without precondition; `403` for the view key |
-| `POST /api/migrate` | deploy     | applies pending `migrations/*.sql`, `200 { applied: [...] }`                                                                                                                                                                                                             |
+| Method + path     | Auth       | Result                                                                                                                                                                                                                                                                   |
+| ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/health` | none       | `200 { ok: true, commit }`, works without database                                                                                                                                                                                                                       |
+| `GET /api/plan`   | edit, view | `200 { role, plan: { version, updatedAt, data } \| null }` + `ETag: "<version>"` when a plan exists. `plan` is `null` before the first save                                                                                                                              |
+| `PUT /api/plan`   | edit       | body `{ data }`. `If-Match: "<version>"` updates, `If-None-Match: *` creates. `200 { version, updatedAt }` + `ETag`. `409 { plan: { version, updatedAt, data } }` when the version is stale or a plan already exists; `428` without precondition; `403` for the view key |
 
+- Migrations are not an endpoint: the API applies pending `migrations/*.sql` before the first request
+  that needs the database (`/api/plan`). `GET /api/health` never touches the database.
 - `data` is the plan in the **wire format of the URL** (`wirePlanSchema`, version `v: 1`),
   uncompressed. The server checks only that it is a JSON object and at most 64 KiB; it never
   interprets it.
@@ -87,8 +90,8 @@ CREATE TABLE plan (
 
 ## Secrets (environment `production`)
 
-`FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`,
-`EDIT_KEY_SHA256`, `VIEW_KEY_SHA256`, `DEPLOY_KEY`. Changing a key = new value via the secrets
+Nine secrets: `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `DB_HOST`, `DB_NAME`, `DB_USER`,
+`DB_PASSWORD`, `EDIT_KEY_SHA256`, `VIEW_KEY_SHA256`. Changing a key = new value via the secrets
 script (or `gh secret set`), "Run workflow"; the old link stops working.
 
 Links: `https://urlaub.ingsparks.de/#key=<editKey>` (parents) and `…/#key=<viewKey>`
