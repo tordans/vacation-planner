@@ -14,7 +14,6 @@ final class ConfigTest extends TestCase
         $config = Config::fromFile(dirname(__DIR__) . '/config.example.php');
         self::assertStringStartsWith('mysql:', $config->dbDsn());
         self::assertSame('dev', $config->commit());
-        self::assertNull($config->devOrigin());
         self::assertNull($config->logFile());
         self::assertSame('', $config->editKeySha256());
         self::assertSame('', $config->viewKeySha256());

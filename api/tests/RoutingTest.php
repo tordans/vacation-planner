@@ -77,39 +77,21 @@ final class RoutingTest extends ApiTestCase
         self::assertSame(413, $r->status);
     }
 
-    public function testNoCorsHeadersForSameOrigin(): void
-    {
-        $r = $this->call('GET', '/api/health', headers: ['Origin' => 'https://evil.example'], auth: false);
-        self::assertNull($r->header('Access-Control-Allow-Origin'));
-        $r = $this->call('GET', '/api/health', auth: false);
-        self::assertNull($r->header('Access-Control-Allow-Origin'));
-    }
-
-    public function testNoCorsHeadersWhenDevOriginUnset(): void
+    public function testNoCorsHeaderIsSentForRequestWithOrigin(): void
     {
         $r = $this->call('GET', '/api/health', headers: ['Origin' => 'http://localhost:5173'], auth: false);
+        self::assertSame(200, $r->status);
         self::assertNull($r->header('Access-Control-Allow-Origin'));
     }
 
-    public function testDevOriginGetsCorsHeadersAndPreflight(): void
+    public function testOptionsOnKnownRouteIs405WithAllowHeader(): void
     {
-        $app = $this->makeApp($this->config(['dev_origin' => 'http://localhost:5173/']), migrate: false);
-
-        $r = $app->handle(new Request('GET', '/api/health', ['Origin' => 'http://localhost:5173']));
-        self::assertSame('http://localhost:5173', $r->header('Access-Control-Allow-Origin'));
-        self::assertSame('ETag', $r->header('Access-Control-Expose-Headers'));
-
-        $pre = $app->handle(new Request('OPTIONS', '/api/plan', ['Origin' => 'http://localhost:5173']));
-        self::assertSame(204, $pre->status);
-        self::assertSame('http://localhost:5173', $pre->header('Access-Control-Allow-Origin'));
-        self::assertStringContainsString('If-Match', (string) $pre->header('Access-Control-Allow-Headers'));
-        self::assertStringContainsString('PUT', (string) $pre->header('Access-Control-Allow-Methods'));
-
-        $other = $app->handle(new Request('GET', '/api/health', ['Origin' => 'https://evil.example']));
-        self::assertNull($other->header('Access-Control-Allow-Origin'));
+        $r = $this->call('OPTIONS', '/api/plan', auth: false);
+        self::assertSame(405, $r->status);
+        self::assertSame('GET, PUT', $r->header('Allow'));
     }
 
-    public function testPreflightOnUnknownRouteIs404(): void
+    public function testOptionsOnUnknownRouteIs404(): void
     {
         self::assertSame(404, $this->call('OPTIONS', '/api/nope', auth: false)->status);
     }

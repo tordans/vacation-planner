@@ -12,7 +12,7 @@ declare(strict_types=1);
  * For local development use config.dev.php (dummy keys, SQLite, see api/README.md) or copy this
  * file to api/config.php (git-ignored) and point PLAN_CONFIG at it if you prefer.
  *
- * Hash a key with:  php bin/hash-key.php '<key>'   (sha256 hex)
+ * Hash a key with:  printf '%s' '<key>' | shasum -a 256   (sha256 hex)
  */
 return [
     'db' => [
@@ -31,10 +31,6 @@ return [
 
     // sha256 (hex) of the deploy key. Only allows POST /api/migrate (X-Deploy-Key header).
     'deploy_key_sha256' => '',
-
-    // Optional: origin of the local dev server that may call the API cross-origin, e.g. 'http://localhost:5173'.
-    // Leave '' in production (same origin, no CORS headers at all).
-    'dev_origin' => '',
 
     // Git commit of the deployed build, shown by GET /api/health.
     'commit' => 'dev',

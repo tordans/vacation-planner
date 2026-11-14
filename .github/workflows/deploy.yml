@@ -47,12 +47,8 @@ jobs:
         working-directory: api
         run: |
           composer install --no-interaction --prefer-dist --no-progress
-          find src bin public tests -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+          find src public tests -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
           vendor/bin/phpunit
-
-      - name: API production dependencies
-        working-directory: api
-        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress
 
       - name: Build the app
         run: bun run build
@@ -68,9 +64,8 @@ jobs:
           cp api/deploy/htaccess deploy-out/public/.htaccess
           cp api/public/index.php deploy-out/public/api/index.php
 
-          # api/ = code outside the document root
-          cp -R api/src api/migrations api/vendor deploy-out/api/
-          rm -rf deploy-out/api/vendor/bin
+          # api/ = code outside the document root (no vendor/: the API has no runtime dependencies)
+          cp -R api/src api/migrations deploy-out/api/
 
           # logs/ exists so the API can write its log; never served
           printf 'Require all denied\n' > deploy-out/logs/.htaccess
@@ -120,7 +115,6 @@ jobs:
               'edit_key_sha256' => $digest('EDIT_KEY_SHA256'),
               'view_key_sha256' => $digest('VIEW_KEY_SHA256'),
               'deploy_key_sha256' => hash('sha256', $need('DEPLOY_KEY')),
-              'dev_origin' => '',
               'commit' => $need('COMMIT'),
           ];
           // The log file sits next to config/ on the server: urlaub/logs/api.log (not public).

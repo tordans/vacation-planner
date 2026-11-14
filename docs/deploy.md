@@ -14,7 +14,7 @@ GitHub (push to main / "Run workflow")
 all-inkl webspace (folder name as KAS creates it: urlaub.ingsparks.de/; called urlaub/ below)
   urlaub/                       FTP root of the dedicated FTP user
     config/config.php           generated from secrets on every deploy (not public)
-    api/{src,migrations,vendor} PHP code (not public)
+    api/{src,migrations}        PHP code (not public, no vendor/: no runtime dependencies)
     logs/                       api.log (not public, .htaccess denies all)
     public/                     document root of urlaub.ingsparks.de
       .htaccess  index.html  assets/  favicon.svg  api/index.php
@@ -100,12 +100,12 @@ working after the deploy. Send the new link to the family.
 ## 4. What the workflow does
 
 1. `bun install --frozen-lockfile`, `bun run check-ci` (types, lint, format, unit tests).
-2. PHP 8.5 (`shivammathur/setup-php`): `composer install` with dev dependencies, `php -l` on every
-   `*.php` file under `src`, `bin`, `public` and `tests`, then PHPUnit; then
-   `composer install --no-dev --optimize-autoloader` for the upload.
+2. PHP 8.5 (`shivammathur/setup-php`): `composer install` with dev dependencies (for PHPUnit only),
+   `php -l` on every `*.php` file under `src`, `public` and `tests`, then PHPUnit. The upload needs
+   no Composer.
 3. `bun run build` (Vite, `dist/`).
 4. Assemble `deploy-out/` exactly like the layout above (`dist/` + `api/deploy/htaccess` as
-   `.htaccess` + `api/public/index.php` as `public/api/index.php`; `api/{src,migrations,vendor}`;
+   `.htaccess` + `api/public/index.php` as `public/api/index.php`; `api/{src,migrations}`;
    `config/config.php` generated from secrets, with the commit; `logs/.htaccess`). `index.html` is
    held back in `deploy-index/`.
 5. **Upload pass 1** (`SamKirkland/FTP-Deploy-Action`, pinned to the commit of v4.4.0, `protocol:

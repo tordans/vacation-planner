@@ -34,15 +34,15 @@ Other rules:
   between, the answer is `409` with the new plan. The server never overwrites a newer version on
   its own; "save my change anyway" is a second `PUT` by the client, with the version it was just
   shown.
-- **CORS:** none (same origin). Only when `dev_origin` is set, requests with exactly that `Origin`
-  get CORS headers and `OPTIONS` preflights are answered (`204`).
+- **Same origin only:** no CORS headers are sent. Local development reaches the API through Vite's
+  proxy for `/api`, production serves the API from the same host.
 - **Logging:** only short error lines (exception class/message, or SQLSTATE for database errors).
   Request bodies, plans, keys and query strings are never logged.
 
 ## Configuration
 
 `config.example.php` documents every key: `db` (dsn/user/password), `edit_key_sha256`,
-`view_key_sha256`, `deploy_key_sha256`, `dev_origin`, `commit`, `log_file`. The deploy workflow
+`view_key_sha256`, `deploy_key_sha256`, `commit`, `log_file`. The deploy workflow
 generates the real `config.php` from secrets and uploads it outside the document root. Lookup
 order: `$PLAN_CONFIG`, `api/config.php` (git-ignored, local development), `../config/config.php`
 next to the api folder (deployed).
@@ -55,13 +55,13 @@ openssl rand -base64 36 | tr '+/' '-_' | tr -d '=\n'   # edit key, view key, dep
 
 # the sha256 hex digests go into config.php
 printf '%s' '<key>' | shasum -a 256 | cut -d' ' -f1
-printf '%s' '<key>' | docker run --rm -i -v "$PWD/api":/app -w /app vacation-planner-api-test php bin/hash-key.php -
 ```
 
 ## Deployed folder layout (all-inkl)
 
 One FTP user, one folder; only `public/` is the document root of `urlaub.ingsparks.de`.
-`vendor/` lives inside `api/` (the same relative layout as in the repository).
+The API has no runtime dependencies: `api/` holds only `src/` and `migrations/`, and
+`src/bootstrap.php` autoloads the classes itself (no Composer on the server).
 
 ```
 urlaub.ingsparks.de/           FTP root of the dedicated FTP user
@@ -69,7 +69,6 @@ urlaub.ingsparks.de/           FTP root of the dedicated FTP user
   api/
     src/                       PHP code
     migrations/                SQL files
-    vendor/                    composer install --no-dev --optimize-autoloader
   logs/                        api.log (not public, .htaccess denies all)
   public/                      document root (KAS subdomain target: urlaub.ingsparks.de/public/)
     .htaccess                  from api/deploy/htaccess
@@ -92,8 +91,7 @@ it in sync with `preview.headers` in `vite.config.ts`. `deploy/check.sh` fails w
 
 ## Local development
 
-`bun run dev-api` builds the image from `Dockerfile.test`, installs the dependencies and starts
-PHP's built-in server on port 8787 with `config.dev.php` (SQLite in `api/dev/`, dummy keys). Run it
+`bun run dev-api` builds the image from `Dockerfile.test` and starts PHP's built-in server on port 8787 with `config.dev.php` (SQLite in `api/dev/`, dummy keys). Run it
 next to `bun run dev`; Vite proxies `/api` to it in both `dev` and `preview`.
 
 ```sh

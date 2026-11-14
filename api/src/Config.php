@@ -85,14 +85,6 @@ final class Config
         return $this->string(['deploy_key_sha256']);
     }
 
-    /** Extra origin allowed to call the API cross-origin (local dev server), or null. */
-    public function devOrigin(): ?string
-    {
-        $v = $this->string(['dev_origin']);
-
-        return $v === '' ? null : rtrim($v, '/');
-    }
-
     public function commit(): string
     {
         $v = $this->string(['commit']);

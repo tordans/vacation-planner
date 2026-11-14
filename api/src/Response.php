@@ -28,11 +28,6 @@ final class Response
         return new self($status, $json, ['Content-Type' => 'application/json; charset=utf-8'] + $headers);
     }
 
-    public static function empty(int $status, array $headers = []): self
-    {
-        return new self($status, '', $headers);
-    }
-
     public function header(string $name): ?string
     {
         foreach ($this->headers as $key => $value) {

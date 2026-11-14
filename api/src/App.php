@@ -7,7 +7,7 @@ namespace VacationPlanner\Api;
 use Closure;
 use VacationPlanner\Api\Handler\PlanHandler;
 
-/** Front controller: routing, auth, size limit, CORS, error mapping. */
+/** Front controller: routing, auth, size limit, error mapping. */
 final class App
 {
     private const AUTH_NONE = 'none';
@@ -56,7 +56,7 @@ final class App
             $response = Response::json(500, ['error' => 'internal_error']);
         }
 
-        return $this->decorate($request, $response);
+        return $this->decorate($response);
     }
 
     private function dispatch(Request $request): Response
@@ -65,10 +65,6 @@ final class App
         $routes = array_filter($this->routes(), static fn (array $r): bool => $r['path'] === $path);
         if ($routes === []) {
             throw new HttpException(404, 'not_found');
-        }
-
-        if ($request->method === 'OPTIONS') {
-            return Response::empty(204);
         }
 
         $route = null;
@@ -128,24 +124,11 @@ final class App
         return new PlanHandler($this->db(), $this->clock);
     }
 
-    /** Security headers, no caching, and CORS only for the configured dev origin. */
-    private function decorate(Request $request, Response $response): Response
+    /** Security headers and no caching. The API is same-origin only, so no CORS headers. */
+    private function decorate(Response $response): Response
     {
         $response->headers['Cache-Control'] = 'no-store';
         $response->headers['X-Content-Type-Options'] = 'nosniff';
-
-        $origin = $request->header('origin');
-        $dev = $this->config->devOrigin();
-        if ($origin !== null && $dev !== null && $origin === $dev) {
-            $response->headers['Access-Control-Allow-Origin'] = $origin;
-            $response->headers['Vary'] = 'Origin';
-            $response->headers['Access-Control-Expose-Headers'] = 'ETag';
-            if ($request->method === 'OPTIONS') {
-                $response->headers['Access-Control-Allow-Methods'] = 'GET, PUT, OPTIONS';
-                $response->headers['Access-Control-Allow-Headers'] = 'Authorization, Content-Type, If-Match, If-None-Match, X-Deploy-Key';
-                $response->headers['Access-Control-Max-Age'] = '600';
-            }
-        }
 
         return $response;
     }

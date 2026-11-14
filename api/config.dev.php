@@ -21,7 +21,6 @@ return [
     'edit_key_sha256' => hash('sha256', 'dev-edit-key'),
     'view_key_sha256' => hash('sha256', 'dev-view-key'),
     'deploy_key_sha256' => hash('sha256', 'dev-deploy-key'),
-    'dev_origin' => '',
     'commit' => 'dev',
     'log_file' => '',
 ];

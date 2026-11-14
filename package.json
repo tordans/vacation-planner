@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "FORCE_COLOR=1 bun --bun vite",
-    "dev-api": "docker build -q -t vacation-planner-api-test -f api/Dockerfile.test api >/dev/null && docker run --rm -p 8787:8787 -e PLAN_CONFIG=/app/config.dev.php -v \"$PWD/api\":/app -w /app vacation-planner-api-test sh -c 'composer install --no-interaction --quiet && mkdir -p dev && php -S 0.0.0.0:8787 public/index.php'",
+    "dev-api": "docker build -q -t vacation-planner-api-test -f api/Dockerfile.test api >/dev/null && docker run --rm -p 8787:8787 -e PLAN_CONFIG=/app/config.dev.php -v \"$PWD/api\":/app -w /app vacation-planner-api-test sh -c 'mkdir -p dev && php -S 0.0.0.0:8787 public/index.php'",
     "build": "bun --bun vite build",
     "preview": "FORCE_COLOR=1 bun --bun vite preview",
     "type-check": "tsc --noEmit -p tsconfig.app.json",
