@@ -1,4 +1,5 @@
 import { ChevronLeftIcon, ChevronRightIcon, Cog6ToothIcon } from '@heroicons/react/20/solid'
+import { getRouteApi } from '@tanstack/react-router'
 import { useState } from 'react'
 import { INFO_TOPICS, InfoFooter, showInfoTopic } from '@/components/InfoFooter'
 import { buttonClass } from '@/components/ui/classes'
@@ -20,14 +21,17 @@ import { HouseholdsDialog } from '@/features/settings/HouseholdsDialog'
 import { SettingsDialog } from '@/features/settings/SettingsDialog'
 import { YearOverview } from '@/features/year-overview/YearOverview'
 import { PRODUCT_NAME, PRODUCT_TITLE } from '@/lib/brand'
-import { addDays, daysBetween, formatSavedCompact, yearOf } from '@/lib/dates'
+import { addDays, daysBetween, formatSavedCompact, today, yearOf } from '@/lib/dates'
+
+const routeApi = getRouteApi('/')
 
 export default function App() {
   const { key, revoked } = useKeyState()
+  const search = routeApi.useSearch()
   // No key (or the server turned it down): no planner and no requests, only the way in.
   if (key === null) return <NoKeyScreen revoked={revoked} />
   return (
-    <PlanProvider planKey={key}>
+    <PlanProvider planKey={key} year={search.year ?? yearOf(today())}>
       <AppGate />
     </PlanProvider>
   )
