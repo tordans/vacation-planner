@@ -417,4 +417,6 @@ note], …]]`), so older links keep working.
 
 ## 14. Central storage
 
-Proposal with read and write links, see [docs/central-storage-plan.md](docs/central-storage-plan.md).
+Being built: one plan on the all-inkl webspace with an edit link and a view link, deployed like
+Checking Sparks. See [docs/release-plan.md](docs/release-plan.md); the earlier analyses (central
+storage, Google Sheets, home NAS) are in [docs/archive/](docs/archive/).

@@ -1,6 +1,6 @@
 # Idea: store the plan on the Synology NAS at home (DS223j)
 
-Status: analysis, not decided, not built. Written 2026-10-21.
+Status: archived 2026-11-14, superseded by [../release-plan.md](../release-plan.md).
 Compares with [central-storage-plan.md](central-storage-plan.md) (PHP + MySQL on all-inkl) and
 [google-sheets-storage.md](google-sheets-storage.md) (Google Sheet via Apps Script).
 

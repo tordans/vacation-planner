@@ -1,6 +1,6 @@
 # Plan: central storage with an admin link and a view link
 
-Status: proposal, not built. Written 2026-10-20, revised the same day.
+Status: archived 2026-11-14, superseded by [../release-plan.md](../release-plan.md).
 
 Decided (2026-10-20):
 

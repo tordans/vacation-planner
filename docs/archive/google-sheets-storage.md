@@ -1,6 +1,6 @@
 # Idea: store the plan in a Google Spreadsheet
 
-Status: analysis, not decided, not built. Written 2026-10-21.
+Status: archived 2026-11-14, superseded by [../release-plan.md](../release-plan.md).
 Compares with the current proposal in [central-storage-plan.md](central-storage-plan.md)
 (own PHP API and MySQL on the all-inkl webspace).
 
