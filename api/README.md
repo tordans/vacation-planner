@@ -2,9 +2,8 @@
 
 PHP 8.5, no framework, PDO. MariaDB 10.11 in production (all-inkl), SQLite in memory in the tests.
 The API stores several plans, one per family. Each plan has its own edit link and view link, and new
-plans can only be created with an invite word ([../docs/multi-plan.md](../docs/multi-plan.md)). The
-app works without the API (plan in the link); with it, parents and grandparents see the same plan. The contract is in [../docs/release-plan.md](../docs/release-plan.md)
-("API contract"); this file covers what is specific to the PHP code.
+plans can only be created with an invite word. This file is the API contract and covers what is
+specific to the PHP code.
 
 The server never interprets the plan. It checks that `data` is a JSON object, stores it as JSON
 text and returns it unchanged.

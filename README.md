@@ -69,9 +69,8 @@ Stack: Vite, React 19 with React Compiler, TanStack Router and Query, Zod 4, dat
 CSS 4, Motion, Headless UI; PHP + MySQL for the API.
 
 - Deployment (all-inkl, FTPS, secrets, first plan): [docs/deploy.md](docs/deploy.md)
-- API contract and decisions: [docs/release-plan.md](docs/release-plan.md),
-  [docs/multi-plan.md](docs/multi-plan.md)
-- Product plan and decisions: [PLAN.md](PLAN.md) and [docs/](docs/)
+- API endpoints, limits and configuration: [api/README.md](api/README.md)
+- Privacy: [docs/datenschutz.md](docs/datenschutz.md)
 
 ## License
 

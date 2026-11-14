@@ -4,7 +4,7 @@ The app (static Vite build) and the PHP API are served from one all-inkl webspac
 Actions workflow ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)) builds, uploads
 via FTPS and checks that the new commit is live. There are no tests in GitHub: the checks run on
 your machine before each push (section 7). The API applies database migrations itself. The layout
-and the API contract are in [api/README.md](../api/README.md) and [release-plan.md](release-plan.md).
+and the API contract are in [api/README.md](../api/README.md).
 The same setup runs in production for the sibling app Checking Sparks (`check.ingsparks.de`).
 
 ```
@@ -29,8 +29,7 @@ all-inkl webspace (folder name as KAS creates it: vacation.ingsparks.de/; called
 Every plan lives in one database row of the table `plans`, and each plan has its own edit key and
 view key. The server stores only SHA-256 digests of the keys. The keys travel in the link fragment
 (`#key=...`), which the browser does not send to the server. New plans can only be created with the
-invite word (a GitHub secret, stored on the server only as a digest); see
-[multi-plan.md](multi-plan.md). Secrets never live in the repository; `config.php` is generated in
+invite word (a GitHub secret, stored on the server only as a digest). Secrets never live in the repository; `config.php` is generated in
 the workflow and exists only on the server.
 
 ## 1. One-time setup in KAS (all-inkl)
