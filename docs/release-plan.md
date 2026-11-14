@@ -29,11 +29,11 @@ Earlier analyses (central storage, Google Sheets, home NAS) are in [archive/](ar
 
 ## What is different here
 
-| Checking Sparks                          | Vacation Planner                                             |
-| ---------------------------------------- | ------------------------------------------------------------ |
-| One family key, data encrypted in browser | Two keys: **edit** and **view**, plan stored as plain JSON   |
-| Web Push, VAPID, cron job, PWA            | none of it                                                   |
-| Several documents and tables              | one table `plan` with one row                                |
+| Checking Sparks                           | Vacation Planner                                           |
+| ----------------------------------------- | ---------------------------------------------------------- |
+| One family key, data encrypted in browser | Two keys: **edit** and **view**, plan stored as plain JSON |
+| Web Push, VAPID, cron job, PWA            | none of it                                                 |
+| Several documents and tables              | one table `plan` with one row                              |
 
 No encryption: the view link must work for the grandparents without a passphrase, and the earlier
 decision was "the view link shows everything". Whoever has the server and database password can
@@ -57,12 +57,12 @@ Auth: `Authorization: Bearer <key>`. The server compares `sha256(key)` with
 `edit_key_sha256` and `view_key_sha256` (`hash_equals`) and sets the role `edit` or `view`.
 Unknown or missing key: `401`.
 
-| Method + path       | Auth        | Result                                                                                                                                                                                                                                                                       |
-| ------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/health`   | none        | `200 { ok: true, commit }`, works without database                                                                                                                                                                                                                            |
-| `GET /api/plan`     | edit, view  | `200 { role, plan: { version, updatedAt, data } \| null }` + `ETag: "<version>"` when a plan exists. `plan` is `null` before the first save                                                                                                                                  |
-| `PUT /api/plan`     | edit        | body `{ data }`. `If-Match: "<version>"` updates, `If-None-Match: *` creates. `200 { version, updatedAt }` + `ETag`. `409 { plan: { version, updatedAt, data } }` when the version is stale or a plan already exists; `428` without precondition; `403` for the view key |
-| `POST /api/migrate` | deploy      | applies pending `migrations/*.sql`, `200 { applied: [...] }`                                                                                                                                                                                                                  |
+| Method + path       | Auth       | Result                                                                                                                                                                                                                                                                   |
+| ------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/health`   | none       | `200 { ok: true, commit }`, works without database                                                                                                                                                                                                                       |
+| `GET /api/plan`     | edit, view | `200 { role, plan: { version, updatedAt, data } \| null }` + `ETag: "<version>"` when a plan exists. `plan` is `null` before the first save                                                                                                                              |
+| `PUT /api/plan`     | edit       | body `{ data }`. `If-Match: "<version>"` updates, `If-None-Match: *` creates. `200 { version, updatedAt }` + `ETag`. `409 { plan: { version, updatedAt, data } }` when the version is stale or a plan already exists; `428` without precondition; `403` for the view key |
+| `POST /api/migrate` | deploy     | applies pending `migrations/*.sql`, `200 { applied: [...] }`                                                                                                                                                                                                             |
 
 - `data` is the plan in the **wire format of the URL** (`wirePlanSchema`, version `v: 1`),
   uncompressed. The server checks only that it is a JSON object and at most 64 KiB; it never

@@ -131,3 +131,17 @@ updates:
           - patch
         patterns:
           - '*'
+
+  - package-ecosystem: composer
+    directory: /api
+    schedule:
+      interval: cron
+      cronjob: '0 7 * * THU#1'
+      timezone: Europe/Berlin
+    cooldown:
+      default-days: 5
+    open-pull-requests-limit: 1
+    groups:
+      composer-dev:
+        patterns:
+          - '*'

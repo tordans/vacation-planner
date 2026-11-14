@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 .tsbuildinfo-app
+*.sqlite
+*.sqlite3
+
+# PHP API: dependencies and local config (api/config.dev.php is committed, dummy keys only)
+api/vendor/
+api/config.php
+api/dev/
+
+# Deploy upload folders (scripts and workflow, see docs/deploy.md)
+/deploy-out/
+/deploy-index/
 
 # Editor directories and files
 .vscode/*
