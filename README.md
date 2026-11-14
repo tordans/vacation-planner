@@ -1,99 +1,77 @@
-# Vacation Planner
+# vacation.ingsparks.de
 
-Plan a family's year: school holidays, public holidays and bridge days, where the family is, who
-takes care of the children, and how many vacation days each parent has left.
+Familienurlaube planen und koordinieren.
 
-**App:** <https://urlaub.ingsparks.de> (UI in German: "Urlaubsplaner")
+A shared year planner for families: school holidays, public holidays and bridge days, where the
+family is, who takes care of the children, and how many leave days each parent has left.
 
-One shared plan for the family, kept on our own webspace (all-inkl, Germany). The plan lives only on
-the server; the address bar holds no plan data.
+**App:** <https://vacation.ingsparks.de> (UI in German). Part of the ingsparks family, next to
+<https://fly.ingsparks.de> and <https://check.ingsparks.de>.
 
-## Two links
+## What you see
 
-The family gets two links. Opening one stores its key in the browser (`localStorage`) and removes it
-from the address bar, so the bare address keeps working on that device.
-
-| Link                                         | Role | Can do                                                                                 |
-| -------------------------------------------- | ---- | -------------------------------------------------------------------------------------- |
-| `https://urlaub.ingsparks.de/#key=<editKey>` | edit | Everything. Changes show at once and are saved after about a second (`If-Match`).      |
-| `https://urlaub.ingsparks.de/#key=<viewKey>` | view | Look at everything including notes and leave accounts, change nothing ("Nur ansehen"). |
-
-Without a stored key the app shows a small screen instead of the planner ("Du brauchst den Link, den
-du bekommen hast.") and makes no API calls. A key the server no longer knows (401) is removed and
-the same screen adds "Dieser Link gilt nicht mehr". "Auf diesem Gerät abmelden" removes the key by
-hand.
-
-The plan is loaded again when the tab gets focus while nothing is unsaved, so a tab left open for
-weeks shows the current plan when you come back; there is no polling. If someone else saved first,
-the app shows their version with "Meine Änderung trotzdem speichern" (last save wins). Without a
-connection the change stays on screen, the header says "Nicht gespeichert – keine Verbindung", and
-saving is retried on the next change and on focus. The tab title and "Gespeichert …" come from the
-server's `updatedAt`.
-
-Server API and deployment: [docs/release-plan.md](docs/release-plan.md) (contract) and
-[docs/deploy.md](docs/deploy.md) (KAS, secrets, first deploy, changing the keys).
-
-## How it works
-
-- **Year overview** (read-only): twelve month blocks with school holidays, public holidays, bridge
-  days, planned periods and school-free days nobody covers yet. A leave account per parent shows
-  budget, planned days (child care at home, family vacation, own leave) and what is left.
+- **Year overview**: twelve month blocks with school holidays, public holidays, bridge days,
+  planned periods, and school-free days nobody covers yet (red dots).
 - **Detail planning**: click a day, a month or a holiday to zoom in. Drag in the row "Wo sind wir"
   to create a period, drag a bar to move it, drag its ends to resize it. Click a parent's or the
-  grandparents' row to set who takes care. Drag in a parent's row for leave they take on their own.
-  Keyboard: arrows move, Shift+arrows resize, Delete removes.
-- **Other households** (grandparents, cousins) are information only: add a name and optionally a
-  federal state to see its school holidays, and enter when they are not at home, in grey bars in
-  their row. They never need care, cost no leave and create no unplanned days. Hide the rows with
-  the "Andere Haushalte" switch.
-- **Ideas**: below "Wo sind wir", drag out ideas that are not decided yet, e.g. "with one set of
-  grandparents" and "with the other set". Ideas may overlap each other and fixed periods, cost no
-  leave and cover no care until "Fest einplanen" turns one into a fixed period.
-- **Leave days** are only charged on a parent's working days that are not public holidays, so a
-  four-day week or a bridge day on a day off is accounted for correctly.
-- **Holidays** come from [mehr-schulferien.de](https://www.mehr-schulferien.de) for the selected
-  federal state (default Berlin), loaded once per year and cached in the browser.
-  "Anpassen" lists them all so single dates can be corrected or removed, and adds the family's
-  own school-free days (training days, after-school care closed). These edits are part of the plan.
+  grandparents' row to set who takes care. Keyboard: arrows move, Shift+arrows resize, Delete
+  removes.
+- **Leave days**: one account per parent with budget, planned days (child care at home, family
+  vacation, own leave) and what is left. Days are only charged on working days that are not public
+  holidays, so a four-day week or a bridge day on a day off is counted correctly.
+- **Other households** (grandparents, cousins) are information only: their school holidays and
+  when they are away, at no cost to anyone's leave.
+- **Ideas**: periods that are not decided yet, which may overlap, until "Fest einplanen" makes one
+  fixed.
+- **Holidays** come from [mehr-schulferien.de](https://www.mehr-schulferien.de) for the chosen
+  federal state. "Anpassen" corrects single dates and adds your own school-free days.
 
-## URL parameters
+## How to use it
 
-The address only holds the view; the plan itself is never part of it.
+1. **You get a link.** Open it once; the app remembers it on that device, so the plain address works
+   afterwards.
+2. **Edit link or view link.** Every plan has two links. The edit link changes everything and saves
+   automatically; the view link shows everything, including notes and leave accounts, and changes
+   nothing ("Nur ansehen"). Send the view link to the grandparents, keep the edit link for the
+   parents.
+3. **Create your own plan.** On the start screen (no link yet), enter the invite word you got from
+   us and press "Plan anlegen". You see both links once: save the edit link, for example in a
+   password manager. Nobody, including us, can show them again.
+4. **Renew a link.** In the menu "Gemeinsamer Plan", "Ansicht-Link erneuern" and
+   "Bearbeiten-Link erneuern" issue a new link and invalidate the old one at once, on every device.
+   Do this when a link was lost or went to someone who should not have it.
 
-| Param    | Example      | Purpose                                                 |
-| -------- | ------------ | ------------------------------------------------------- |
-| `year`   | `2027`       | Selected year, defaults to the current year             |
-| `from`   | `2027-06-24` | Detail view start; `from` and `to` open the detail view |
-| `to`     | `2027-08-21` | Detail view end                                         |
-| `others` | `hide`       | Hides the other households' rows; absent means shown    |
+Several people can edit at the same time; if two saves collide, the later one is offered the chance
+to overwrite ("Meine Änderung trotzdem speichern"). Without a connection the change stays on screen
+and is saved when the connection is back.
+
+## Privacy
+
+There are no accounts, cookies, tracking or ads. Plans are stored in plain text on our own webspace
+in Germany (all-inkl.com), readable by everyone with a link, by the operator and by the host; the
+only third-party request is the holiday data from mehr-schulferien.de. Details:
+[docs/datenschutz.md](docs/datenschutz.md) (German).
 
 ## Development
 
-Requires [Bun](https://bun.sh) ≥ 1.3.14.
+Requires [Bun](https://bun.sh) >= 1.3.14 and Docker (for the PHP API in development).
 
 ```bash
 bun install
-bun run dev
+bun run dev       # Vite on http://localhost:5173, proxies /api to the API below
+bun run dev-api   # PHP API on http://localhost:8787 (see api/README.md)
 ```
 
-| Script                    | Role                                                     |
-| ------------------------- | -------------------------------------------------------- |
-| `dev`                     | Vite dev server                                          |
-| `build` / `preview`       | Production build and local preview                       |
-| `type-check`              | `tsc --noEmit` (TypeScript 7)                            |
-| `lint` / `lint-check`     | Oxlint (mutating / read-only)                            |
-| `format` / `format-check` | oxfmt (mutating / read-only)                             |
-| `test-run`                | Vitest                                                   |
-| `check`                   | Local verify: type-check, lint, format, tests, knip-warn |
-| `check-ci`                | Read-only verify, run by the pre-push hook               |
+`bun run check` runs type-check, lint, format, tests and knip. The pre-push hook runs the same
+checks (plus the PHP tests), so GitHub does not repeat them.
 
-Stack: Vite 8, React 19 with React Compiler, TanStack Router (search params validated with Zod 4),
-TanStack Query, date-fns with `@date-fns/tz`, Tailwind CSS 4, Motion, Headless UI.
+Stack: Vite, React 19 with React Compiler, TanStack Router and Query, Zod 4, date-fns, Tailwind
+CSS 4, Motion, Headless UI; PHP + MySQL for the API.
 
-Deployment: see [docs/deploy.md](docs/deploy.md). The app talks to `/api/plan` on the same origin;
-during development the Vite proxy forwards `/api` to the local PHP server.
-
-The product plan and its decisions are in [PLAN.md](PLAN.md).
+- Deployment (all-inkl, FTPS, secrets, first plan): [docs/deploy.md](docs/deploy.md)
+- API contract and decisions: [docs/release-plan.md](docs/release-plan.md),
+  [docs/multi-plan.md](docs/multi-plan.md)
+- Product plan and decisions: [PLAN.md](PLAN.md) and [docs/](docs/)
 
 ## License
 

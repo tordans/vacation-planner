@@ -24,3 +24,8 @@ export function removeKeyFromHash(hash: string): string {
   const rest = params.toString()
   return rest ? `#${rest}` : ''
 }
+
+/** The link to share: the app's address with the key in the fragment. */
+export function linkForKey(key: string, origin: string): string {
+  return `${origin.replace(/\/+$/, '')}/#key=${key}`
+}

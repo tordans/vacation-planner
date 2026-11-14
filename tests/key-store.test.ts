@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { isValidKey, parseKeyFromHash, removeKeyFromHash } from '@/features/server/key-hash'
+import {
+  isValidKey,
+  linkForKey,
+  parseKeyFromHash,
+  removeKeyFromHash,
+} from '@/features/server/key-hash'
 
 const KEY = 'aB3_-xYz0123456789ABCDEFghij'
 
@@ -33,5 +38,11 @@ describe('key in the URL fragment', () => {
     expect(removeKeyFromHash(`#foo=1&key=${KEY}`)).toBe('#foo=1')
     expect(removeKeyFromHash('#foo=1')).toBe('#foo=1')
     expect(removeKeyFromHash('')).toBe('')
+  })
+
+  it('builds a link that reads back as the same key', () => {
+    const link = linkForKey(KEY, 'https://vacation.ingsparks.de/')
+    expect(link).toBe(`https://vacation.ingsparks.de/#key=${KEY}`)
+    expect(parseKeyFromHash(new URL(link).hash)).toBe(KEY)
   })
 })

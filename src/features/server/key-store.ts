@@ -72,6 +72,12 @@ function getSnapshot() {
   return state
 }
 
+/** Remember `key` on this device and switch to it (a new plan, or a renewed edit link). */
+export function storeKey(key: string) {
+  writeStoredKey(key)
+  setState({ key, revoked: false })
+}
+
 /** Forget the key on this device. `revoked` additionally shows "Dieser Link gilt nicht mehr". */
 export function clearKey(options: { revoked?: boolean } = {}) {
   writeStoredKey(null)

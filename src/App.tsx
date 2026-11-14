@@ -2,6 +2,7 @@ import { ChevronLeftIcon, ChevronRightIcon, Cog6ToothIcon } from '@heroicons/rea
 import { useState } from 'react'
 import { INFO_TOPICS, InfoFooter, showInfoTopic } from '@/components/InfoFooter'
 import { buttonClass } from '@/components/ui/classes'
+import { Wordmark } from '@/components/Wordmark'
 import { DetailGantt } from '@/features/detail-gantt/DetailGantt'
 import { MAX_RANGE_DAYS } from '@/features/detail-gantt/gantt-scale'
 import { federalStateByCode } from '@/features/holidays/federal-states'
@@ -18,6 +19,7 @@ import { CalendarDialog } from '@/features/settings/CalendarDialog'
 import { HouseholdsDialog } from '@/features/settings/HouseholdsDialog'
 import { SettingsDialog } from '@/features/settings/SettingsDialog'
 import { YearOverview } from '@/features/year-overview/YearOverview'
+import { PRODUCT_NAME, PRODUCT_TITLE } from '@/lib/brand'
 import { addDays, daysBetween, formatSavedCompact, yearOf } from '@/lib/dates'
 
 export default function App() {
@@ -37,8 +39,10 @@ function AppGate() {
   if (server.load === 'ready') return <Planner />
   return (
     <div className="mx-auto max-w-[96rem] space-y-3 px-4 py-6 sm:px-6">
-      <title>Urlaubsplaner</title>
-      <h1 className="text-xl font-semibold tracking-tight">Urlaubsplaner</h1>
+      <title>{PRODUCT_TITLE}</title>
+      <h1 className="text-xl font-semibold tracking-tight">
+        <Wordmark />
+      </h1>
       {server.load === 'loading' ? (
         <p className="text-sm text-zinc-600">Gemeinsamer Plan wird geladen …</p>
       ) : (
@@ -99,14 +103,16 @@ function Planner() {
     <div className="mx-auto max-w-[96rem] space-y-6 px-4 py-6 sm:px-6">
       <title>
         {saved
-          ? `Urlaubsplaner ${year} – Stand ${formatSavedCompact(saved)}`
-          : `Urlaubsplaner ${year}`}
+          ? `${PRODUCT_NAME} ${year} – Stand ${formatSavedCompact(saved)}`
+          : `${PRODUCT_NAME} ${year}`}
       </title>
 
       <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div>
           <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xl font-semibold tracking-tight">
-            Urlaubsplaner
+            <span>
+              <Wordmark />
+            </span>
             {readOnly && (
               <span className="rounded-full bg-zinc-200 px-2.5 py-0.5 text-xs font-medium tracking-normal text-zinc-700">
                 Nur ansehen

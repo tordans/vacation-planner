@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { toWire } from '@/features/plan/plan-wire'
-import { ApiError, createApiClient, type FetchLike } from '@/features/server/api-client'
+import { ApiError, createApiClient, createPlan, type FetchLike } from '@/features/server/api-client'
 import { familyPlan } from './fixtures'
 
 type Call = { url: string; init: RequestInit }
@@ -112,5 +112,75 @@ describe('api client putPlan', () => {
   it('rejects a 409 without a plan', async () => {
     const { api } = client(() => json(409, {}))
     await expect(api.putPlan(data, 1)).rejects.toBeInstanceOf(ApiError)
+  })
+})
+
+const NEW_EDIT_KEY = 'E'.repeat(43)
+const NEW_VIEW_KEY = 'V'.repeat(43)
+
+function plainClient(respond: (call: Call) => Response) {
+  const calls: Call[] = []
+  const fetch: FetchLike = (url, init = {}) => {
+    const call = { url, init }
+    calls.push(call)
+    return Promise.resolve(respond(call))
+  }
+  return { fetch, calls }
+}
+
+describe('createPlan', () => {
+  it('posts the invite word without a key and returns both keys', async () => {
+    const { fetch, calls } = plainClient(() =>
+      json(201, { editKey: NEW_EDIT_KEY, viewKey: NEW_VIEW_KEY }),
+    )
+    const result = await createPlan('sonne', { fetch })
+    expect(result).toEqual({ ok: true, editKey: NEW_EDIT_KEY, viewKey: NEW_VIEW_KEY })
+    expect(calls[0]?.url).toBe('/api/plans')
+    expect(calls[0]?.init.method).toBe('POST')
+    expect(headersOf(calls[0]!).get('Authorization')).toBeNull()
+    const body = calls[0]?.init.body
+    expect(typeof body === 'string' ? JSON.parse(body) : null).toEqual({ invite: 'sonne' })
+  })
+
+  it('reports the refusals as results', async () => {
+    const cases = [
+      [403, 'invalid_invite'],
+      [429, 'rate_limited'],
+      [503, 'plans_full'],
+    ] as const
+    for (const [status, reason] of cases) {
+      const { fetch } = plainClient(() => json(status, { error: reason }))
+      expect(await createPlan('x', { fetch })).toEqual({ ok: false, reason })
+    }
+  })
+
+  it('throws for other errors, malformed keys and network errors', async () => {
+    const server = plainClient(() => json(500, { error: 'server_error' }))
+    await expect(createPlan('x', { fetch: server.fetch })).rejects.toMatchObject({ status: 500 })
+    const odd = plainClient(() => json(201, { editKey: 'short', viewKey: NEW_VIEW_KEY }))
+    await expect(createPlan('x', { fetch: odd.fetch })).rejects.toBeInstanceOf(ApiError)
+    const offline = () => Promise.reject(new TypeError('Failed to fetch'))
+    await expect(createPlan('x', { fetch: offline })).rejects.toBeInstanceOf(TypeError)
+  })
+})
+
+describe('api client renewKey', () => {
+  it('posts which key to replace with the edit key and returns the new key', async () => {
+    const { api, calls } = client(() => json(200, { key: NEW_VIEW_KEY }))
+    expect(await api.renewKey('view')).toBe(NEW_VIEW_KEY)
+    expect(calls[0]?.url).toBe('/api/plan/keys')
+    expect(calls[0]?.init.method).toBe('POST')
+    expect(headersOf(calls[0]!).get('Authorization')).toBe('Bearer secret-key-1234')
+    const body = calls[0]?.init.body
+    expect(typeof body === 'string' ? JSON.parse(body) : null).toEqual({ which: 'view' })
+  })
+
+  it('throws for a view key (403), an unknown key (401) and a malformed answer', async () => {
+    for (const status of [401, 403]) {
+      const { api } = client(() => json(status, { error: 'x' }))
+      await expect(api.renewKey('edit')).rejects.toMatchObject({ status })
+    }
+    const { api } = client(() => json(200, { key: 'no' }))
+    await expect(api.renewKey('edit')).rejects.toBeInstanceOf(ApiError)
   })
 })

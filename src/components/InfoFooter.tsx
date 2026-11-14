@@ -1,5 +1,7 @@
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
 import type { ReactNode } from 'react'
+import { linkClass } from '@/components/ui/classes'
+import { PRIVACY_DOC_URL, PrivacyButton } from '@/features/privacy/PrivacyDialog'
 
 /** Anchors other parts of the page link to. */
 export const INFO_TOPICS = {
@@ -14,8 +16,6 @@ export function showInfoTopic(id: string) {
   topic.scrollIntoView({ behavior: 'smooth', block: 'center' })
   topic.querySelector('summary')?.focus({ preventScroll: true })
 }
-
-const linkClass = 'font-medium text-sky-700 underline underline-offset-2 hover:text-sky-900'
 
 function ExternalLink({ href, children }: { href: string; children: ReactNode }) {
   return (
@@ -68,44 +68,66 @@ export function InfoFooter() {
             </p>
           </Topic>
 
+          <Topic title="Wer kann den Plan sehen und ändern?">
+            <p>
+              Jeder Plan hat zwei Links.{' '}
+              <strong className="font-semibold text-zinc-900">Der Link zum Bearbeiten</strong> zeigt
+              und ändert alles, auch die Links erneuern. Der{' '}
+              <strong className="font-semibold text-zinc-900">Link zum Ansehen</strong> zeigt alles,
+              auch Notizen und Urlaubskonten, und kann nichts ändern. Teile die Links nur mit
+              Menschen, die den Plan sehen sollen. Einen Plan ohne Link kann niemand öffnen.
+            </p>
+            <p>
+              <strong className="font-semibold text-zinc-900">Links erneuern:</strong> Im Menü
+              „Gemeinsamer Plan“ erzeugst du einen neuen Link zum Ansehen oder zum Bearbeiten. Der
+              alte gilt dann sofort nicht mehr; wer ihn öffnet, sieht „Dieser Link gilt nicht mehr“.
+              Den neuen Link siehst du nur einmal. Gespeicherte Links lassen sich nicht wieder
+              anzeigen, also speichere den Link zum Bearbeiten zum Beispiel in einem
+              Passwortmanager.
+            </p>
+            <p>
+              <strong className="font-semibold text-zinc-900">Neue Pläne:</strong> Einen eigenen
+              Plan legt nur an, wer das Einladungswort kennt, das wir persönlich weitergeben.
+            </p>
+          </Topic>
+
           <Topic title="Welche Daten werden wo gespeichert?">
             <p>
-              <strong className="font-semibold text-zinc-900">Auf dem Server:</strong> der
-              gemeinsame Plan, also Bundesland, Namen, Arbeitstage und Urlaubstage der Eltern, alle
-              Zeiträume mit Ort, Notiz und Betreuung, Anpassungen an Ferien und Feiertagen sowie
-              andere Haushalte mit ihren Abwesenheiten. Er liegt auf unserem eigenen Webspace bei
-              all-inkl.com in Deutschland, unverschlüsselt in einer Datenbank. Wer den Server und
-              die Datenbank verwaltet, kann ihn lesen; wie bei allem auf eigenem Webspace.
+              <strong className="font-semibold text-zinc-900">Auf dem Server:</strong> der Plan,
+              also Bundesland, Namen (falls du sie einträgst), Arbeitstage und Urlaubstage der
+              Eltern, alle Zeiträume mit Ort, Notiz und Betreuung, Anpassungen an Ferien und
+              Feiertagen sowie andere Haushalte mit ihren Abwesenheiten. Er liegt auf unserem
+              Webspace bei all-inkl.com in Deutschland,{' '}
+              <strong className="font-semibold text-zinc-900">unverschlüsselt</strong> in einer
+              Datenbank. Lesen können ihn alle mit einem Link, der Betreiber und der Hoster. Von den
+              Links speichert der Server nur einen Fingerabdruck (SHA-256), nicht den Link selbst.
             </p>
             <p>
-              <strong className="font-semibold text-zinc-900">Wer den Plan sehen kann:</strong>{' '}
-              jeder, der einen der beiden Links hat. Der Link zum Ansehen zeigt alles, auch Notizen
-              und Urlaubskonten, und kann nichts ändern. Der Link zum Bearbeiten kann auch ändern.
-              Teile die Links nur mit Menschen, die den Plan sehen sollen. Der Server speichert von
-              den Links nur einen Fingerabdruck, nicht den Link selbst.
-            </p>
-            <p>
-              <strong className="font-semibold text-zinc-900">Links austauschen:</strong> Ein Link
-              wird ersetzt, indem wir seinen Schlüssel auf dem Server austauschen und die Seite neu
-              ausliefern. Danach gilt der alte Link nicht mehr; die Seite meldet dann „Dieser Link
-              gilt nicht mehr“.
+              <strong className="font-semibold text-zinc-900">Außerdem:</strong> Falsche
+              Einladungswörter werden mit einem anonymisierten IP-Fingerabdruck gezählt, höchstens
+              etwa eine Stunde lang. Das Fehlerprotokoll enthält keine Inhalte. Der Webserver beim
+              Hoster schreibt übliche Zugriffsprotokolle nach dessen Regeln.
             </p>
             <p>
               <strong className="font-semibold text-zinc-900">In deinem Browser:</strong> zwei
               Dinge, damit die Seite bequemer ist. Erstens die geladenen Ferien und Feiertage je
               Bundesland und Jahr, damit sie nicht bei jedem Besuch neu abgefragt werden. Zweitens
-              der Zugangsschlüssel, nachdem du den Zugangslink geöffnet hast; so funktioniert auch
-              die Adresse ohne Schlüssel, etwa vom Startbildschirm. „Auf diesem Gerät abmelden“
-              entfernt ihn wieder. Alles bleibt auf deinem Gerät und lässt sich über „Websitedaten
-              löschen“ im Browser entfernen. Keine Cookies, keine Statistik, keine Werbung.
+              der Zugangsschlüssel, nachdem du einen Link geöffnet hast; so funktioniert auch die
+              Adresse ohne Schlüssel, etwa vom Startbildschirm. „Auf diesem Gerät abmelden“ entfernt
+              ihn wieder. Alles bleibt auf deinem Gerät und lässt sich über „Websitedaten löschen“
+              im Browser entfernen. Keine Cookies, keine Statistik, keine Werbung.
+            </p>
+            <p>
+              Einen Plan löschen wir auf Anfrage. Alle Einzelheiten stehen im{' '}
+              <ExternalLink href={PRIVACY_DOC_URL}>vollständigen Datenschutztext</ExternalLink>.
             </p>
           </Topic>
 
           <Topic title="Welche externen Dienste werden genutzt?">
             <p>
               <strong className="font-semibold text-zinc-900">all-inkl.com</strong> liefert diese
-              Seite aus und speichert den gemeinsamen Plan, auf unserem Webspace in Deutschland.
-              Dabei verarbeitet der Anbieter technische Zugriffsdaten wie deine IP-Adresse. Siehe{' '}
+              Seite aus und speichert die Pläne, auf unserem Webspace in Deutschland. Dabei
+              verarbeitet der Anbieter technische Zugriffsdaten wie deine IP-Adresse. Siehe{' '}
               <ExternalLink href="https://all-inkl.com/datenschutzinformationen">
                 Datenschutzinformationen von all-inkl.com
               </ExternalLink>
@@ -113,9 +135,9 @@ export function InfoFooter() {
             </p>
             <p>
               <strong className="font-semibold text-zinc-900">mehr-schulferien.de</strong> liefert
-              Ferien und Feiertage. Dein Browser fragt dort einmal je Bundesland und Jahr an und
-              merkt sich das Ergebnis; übertragen werden nur Bundesland und Jahr, nichts aus deinem
-              Plan. Siehe{' '}
+              Ferien und Feiertage. Dein Browser fragt dort direkt einmal je Bundesland und Jahr an
+              und merkt sich das Ergebnis. Der Dienst sieht deine IP-Adresse sowie Bundesland und
+              Jahr, nichts aus deinem Plan. Siehe{' '}
               <ExternalLink href="https://www.mehr-schulferien.de/developers/api">
                 Beschreibung der Schnittstelle
               </ExternalLink>{' '}
@@ -212,6 +234,9 @@ export function InfoFooter() {
           </Topic>
         </div>
       </div>
+      <p className="text-sm text-zinc-600 print:hidden">
+        <PrivacyButton />
+      </p>
     </footer>
   )
 }

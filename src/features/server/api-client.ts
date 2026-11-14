@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { WirePlan } from '@/features/plan/plan-schema'
+import { isValidKey } from './key-hash'
 
 export class ApiError extends Error {
   readonly status: number
@@ -43,6 +44,25 @@ export type PutPlanResult =
   | { ok: true; version: number; updatedAt: string }
   | { ok: false; conflict: ServerPlan }
 
+const keySchema = z.string().refine(isValidKey)
+
+const createPlanSchema = z.object({ editKey: keySchema, viewKey: keySchema })
+
+const renewKeySchema = z.object({ key: keySchema })
+
+/** Why creating a plan failed, as the API reports it (403, 429, 503). */
+export type CreatePlanFailure = 'invalid_invite' | 'rate_limited' | 'plans_full'
+
+export type CreatePlanResult =
+  | { ok: true; editKey: string; viewKey: string }
+  | { ok: false; reason: CreatePlanFailure }
+
+const CREATE_FAILURES: Record<number, CreatePlanFailure> = {
+  403: 'invalid_invite',
+  429: 'rate_limited',
+  503: 'plans_full',
+}
+
 async function readJson<T>(response: Response, label: string, schema: z.ZodType<T>): Promise<T> {
   let json: unknown
   try {
@@ -59,6 +79,30 @@ function assertOk(response: Response, label: string) {
   if (!response.ok) {
     throw new ApiError(response.status, `${label} failed with HTTP ${response.status}`)
   }
+}
+
+/**
+ * `POST /api/plans`: creates a plan with the invite word. Needs no key. A refused request is a
+ * result (so the screen can say why); network errors and unexpected answers throw.
+ */
+export async function createPlan(
+  invite: string,
+  {
+    baseUrl = '',
+    fetch = (input, init) => globalThis.fetch(input, init),
+  }: { baseUrl?: string; fetch?: FetchLike } = {},
+): Promise<CreatePlanResult> {
+  const label = 'POST /api/plans'
+  const response = await fetch(`${baseUrl.replace(/\/+$/, '')}/api/plans`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ invite }),
+  })
+  const reason = CREATE_FAILURES[response.status]
+  if (reason) return { ok: false, reason }
+  assertOk(response, label)
+  return { ok: true, ...(await readJson(response, label, createPlanSchema)) }
 }
 
 export function createApiClient({
@@ -111,6 +155,22 @@ export function createApiClient({
       }
       assertOk(response, label)
       return { ok: true, ...(await readJson(response, label, putPlanSchema)) }
+    },
+
+    /**
+     * `POST /api/plan/keys` (edit key only): replaces the view or edit key and returns the new one,
+     * shown once. The old link stops working at once. Throws `ApiError` (401, 403).
+     */
+    async renewKey(which: Role): Promise<string> {
+      const label = 'POST /api/plan/keys'
+      const response = await fetch(`${url}/keys`, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ which }),
+      })
+      assertOk(response, label)
+      return (await readJson(response, label, renewKeySchema)).key
     },
   }
 }

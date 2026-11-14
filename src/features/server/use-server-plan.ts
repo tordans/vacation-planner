@@ -23,6 +23,10 @@ import {
 /** Edits are saved this long after the last change. */
 const SAVE_DELAY_MS = 1000
 
+export function planQueryKey(key: string) {
+  return ['plan', key] as const
+}
+
 function isStatus(error: unknown, status: number) {
   return error instanceof ApiError && error.status === status
 }
@@ -42,7 +46,7 @@ export function useServerPlan(key: string) {
     setSyncKey(key)
     dispatch({ type: 'discard' })
   }
-  const queryKey = ['plan', key] as const
+  const queryKey = planQueryKey(key)
   const unsaved = hasUnsavedChanges(sync)
 
   const query = useQuery({
