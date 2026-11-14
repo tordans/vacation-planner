@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Post-deploy check of https://urlaub.ingsparks.de (also runnable by hand):
-#   api/deploy/check.sh https://urlaub.ingsparks.de [expected-commit]
+# Post-deploy check of https://vacation.ingsparks.de (also runnable by hand):
+#   api/deploy/check.sh https://vacation.ingsparks.de [expected-commit]
 # Verifies what api/deploy/htaccess promises (routing, 404 for missing assets, SPA fallback, CSP,
 # auth on the plan API) and that /api/health reports the commit that was just deployed.
 # Exit code 1 if anything is off.
@@ -76,6 +76,13 @@ fetch /api/plan -X PUT -H 'Content-Type: application/json' --data '{"data":{}}'
 if [ "$status" = 401 ]; then pass "PUT /api/plan without key -> 401"; else fail "PUT /api/plan without key -> $status (expected 401)"; fi
 fetch /api/plan -H 'Authorization: Bearer check-with-a-wrong-key'
 if [ "$status" = 401 ]; then pass "/api/plan with a wrong key -> 401"; else fail "/api/plan with a wrong key -> $status (expected 401)"; fi
+fetch /api/plan/keys -X POST -H 'Content-Type: application/json' --data '{"which":"view"}'
+if [ "$status" = 401 ]; then pass "POST /api/plan/keys without key -> 401"; else fail "POST /api/plan/keys without key -> $status (expected 401)"; fi
+
+# Creating a plan needs the invite word. A wrong word is 403 (this also shows that the database and
+# the migrations work: the request counts one failed attempt for this runner, which expires in an hour).
+fetch /api/plans -X POST -H 'Content-Type: application/json' --data '{"invite":"check-with-a-wrong-word"}'
+if [ "$status" = 403 ]; then pass "POST /api/plans with a wrong invite word -> 403"; else fail "POST /api/plans with a wrong invite word -> $status (expected 403)"; fi
 
 # 5. nothing hidden is served
 fetch /.htaccess

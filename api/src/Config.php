@@ -67,16 +67,16 @@ final class Config
         return $v === '' ? null : $v;
     }
 
-    /** sha256 hex of the edit key (parents: read and write). */
-    public function editKeySha256(): string
+    /** sha256 hex of the invite word that allows creating a plan. Empty: nobody can create one. */
+    public function inviteSha256(): string
     {
-        return $this->string(['edit_key_sha256']);
+        return strtolower($this->string(['invite_sha256']));
     }
 
-    /** sha256 hex of the view key (read only). */
-    public function viewKeySha256(): string
+    /** Secret for the daily IP salt (see Handler\PlansHandler). Must not be empty. */
+    public function ipSaltSecret(): string
     {
-        return $this->string(['view_key_sha256']);
+        return $this->string(['ip_salt_secret']);
     }
 
     public function commit(): string

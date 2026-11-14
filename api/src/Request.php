@@ -26,6 +26,8 @@ final class Request
         public readonly ?int $declaredLength = null,
         /** true when the body was cut off at the limit while reading. */
         public readonly bool $bodyTruncated = false,
+        /** Address of the client (REMOTE_ADDR). Only ever hashed, never stored or logged. */
+        public readonly string $ip = '',
     ) {
         $lower = [];
         foreach ($headers as $name => $value) {
@@ -115,6 +117,8 @@ final class Request
             $truncated = strlen($body) > self::MAX_BODY_BYTES;
         }
 
-        return new self($method, $path, $headers, $query, $body, $declared, $truncated);
+        $ip = isset($_SERVER['REMOTE_ADDR']) && is_string($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+
+        return new self($method, $path, $headers, $query, $body, $declared, $truncated, $ip);
     }
 }

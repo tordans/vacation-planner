@@ -15,8 +15,15 @@ final class ConfigTest extends TestCase
         self::assertStringStartsWith('mysql:', $config->dbDsn());
         self::assertSame('dev', $config->commit());
         self::assertNull($config->logFile());
-        self::assertSame('', $config->editKeySha256());
-        self::assertSame('', $config->viewKeySha256());
+        self::assertSame('', $config->inviteSha256());
+        self::assertNotSame('', $config->ipSaltSecret());
+    }
+
+    public function testDevConfigHasTheDevInviteWord(): void
+    {
+        $config = Config::fromFile(dirname(__DIR__) . '/config.dev.php');
+        self::assertSame(hash('sha256', 'dev-invite'), $config->inviteSha256());
+        self::assertNotSame('', $config->ipSaltSecret());
     }
 
     public function testMissingFileThrows(): void

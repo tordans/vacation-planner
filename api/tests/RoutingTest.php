@@ -52,6 +52,17 @@ final class RoutingTest extends ApiTestCase
         self::assertSame('GET, PUT', $r->header('Allow'));
     }
 
+    public function testNewRoutesOnlyAllowPost(): void
+    {
+        $plans = $this->call('GET', '/api/plans', auth: false);
+        self::assertSame(405, $plans->status);
+        self::assertSame('POST', $plans->header('Allow'));
+
+        $keys = $this->call('PUT', '/api/plan/keys');
+        self::assertSame(405, $keys->status);
+        self::assertSame('POST', $keys->header('Allow'));
+    }
+
     public function testBodyOver64KiBIs413(): void
     {
         $r = $this->call('PUT', '/api/plan', rawBody: str_repeat('a', 64 * 1024 + 1), headers: ['If-None-Match' => '*']);
@@ -67,13 +78,13 @@ final class RoutingTest extends ApiTestCase
 
     public function testDeclaredContentLengthOverLimitIs413(): void
     {
-        $r = $this->app->handle(new Request('PUT', '/api/plan', ['Authorization' => 'Bearer ' . self::EDIT_KEY], [], '', 3 * 1024 * 1024));
+        $r = $this->app->handle(new Request('PUT', '/api/plan', self::bearer($this->editKey()), [], '', 3 * 1024 * 1024));
         self::assertSame(413, $r->status);
     }
 
     public function testTruncatedBodyIs413(): void
     {
-        $r = $this->app->handle(new Request('PUT', '/api/plan', ['Authorization' => 'Bearer ' . self::EDIT_KEY], [], 'x', null, true));
+        $r = $this->app->handle(new Request('PUT', '/api/plan', self::bearer($this->editKey()), [], 'x', null, true));
         self::assertSame(413, $r->status);
     }
 
@@ -105,7 +116,7 @@ final class RoutingTest extends ApiTestCase
             new Logger('/dev/null'),
             $this->migrationsDir,
         );
-        $r = $app->handle(new Request('GET', '/api/plan', ['Authorization' => 'Bearer ' . self::EDIT_KEY]));
+        $r = $app->handle(new Request('GET', '/api/plan', self::bearer('any-key')));
         self::assertSame(500, $r->status);
         self::assertSame(['error' => 'internal_error'], $r->data());
         self::assertStringNotContainsString('secret detail', $r->body);

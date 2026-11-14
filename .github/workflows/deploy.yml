@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 env:
-  SITE_URL: https://urlaub.ingsparks.de
+  SITE_URL: https://vacation.ingsparks.de
 
 jobs:
   deploy:
@@ -67,8 +67,7 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          EDIT_KEY_SHA256: ${{ secrets.EDIT_KEY_SHA256 }}
-          VIEW_KEY_SHA256: ${{ secrets.VIEW_KEY_SHA256 }}
+          INVITE_SHA256: ${{ secrets.INVITE_SHA256 }}
         run: |
           set -euo pipefail
           php > deploy-out/config/config.php <<'PHP'
@@ -95,11 +94,13 @@ jobs:
                   'user' => $need('DB_USER'),
                   'password' => $need('DB_PASSWORD'),
               ],
-              'edit_key_sha256' => $digest('EDIT_KEY_SHA256'),
-              'view_key_sha256' => $digest('VIEW_KEY_SHA256'),
+              'invite_sha256' => $digest('INVITE_SHA256'),
+              // Secret for the daily IP salt (failed invite attempts). Derived from DB_PASSWORD, so
+              // it needs no secret of its own; it only has to be stable between deploys.
+              'ip_salt_secret' => hash_hmac('sha256', 'vacation-planner ip salt', $need('DB_PASSWORD')),
               'commit' => $need('COMMIT'),
           ];
-          // The log file sits next to config/ on the server: urlaub/logs/api.log (not public).
+          // The log file sits next to config/ on the server: vacation.ingsparks.de/logs/api.log (not public).
           $code = rtrim(var_export($config, true));
           $code = substr($code, 0, -1) . "  'log_file' => dirname(__DIR__) . '/logs/api.log',\n)";
           echo "<?php\n\nreturn " . $code . ";\n";

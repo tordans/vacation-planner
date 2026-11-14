@@ -4,36 +4,36 @@ declare(strict_types=1);
 
 namespace VacationPlanner\Api;
 
-/** Compares sha256(key) of what the client sends with the digests from the config. */
+/**
+ * Finds the plan of a key: looks up sha256(key) in the edit and view columns. Which column
+ * matched gives the role. Unknown keys give null.
+ */
 final class Auth
 {
-    public function __construct(private readonly Config $config)
+    public function __construct(private readonly Db $db)
     {
     }
 
-    /** 'edit' or 'view' for a known bearer key, null for a missing or unknown one. */
-    public function role(Request $request): ?string
+    public function resolve(string $key): ?Access
     {
-        $token = $request->bearerToken();
-        if ($token === null) {
+        if ($key === '') {
             return null;
         }
-        if (self::matches($token, $this->config->editKeySha256())) {
-            return 'edit';
+        $hash = Keys::hash($key);
+        $row = $this->db->one(
+            'SELECT id, edit_key_sha256, view_key_sha256 FROM plans WHERE edit_key_sha256 = ? OR view_key_sha256 = ?',
+            [$hash, $hash],
+        );
+        if ($row === null) {
+            return null;
         }
-        if (self::matches($token, $this->config->viewKeySha256())) {
-            return 'view';
+        if (hash_equals((string) $row['edit_key_sha256'], $hash)) {
+            return new Access((string) $row['id'], 'edit');
+        }
+        if (hash_equals((string) $row['view_key_sha256'], $hash)) {
+            return new Access((string) $row['id'], 'view');
         }
 
         return null;
-    }
-
-    private static function matches(string $given, string $expectedHash): bool
-    {
-        if ($given === '' || $expectedHash === '') {
-            return false;
-        }
-
-        return hash_equals(strtolower($expectedHash), hash('sha256', $given));
     }
 }

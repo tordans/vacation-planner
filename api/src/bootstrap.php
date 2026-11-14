@@ -8,7 +8,7 @@ declare(strict_types=1);
  * below maps VacationPlanner\Api\ to src/ (PSR-4). Composer is only needed for PHPUnit.
  *
  *   repository:  api/public/index.php            -> api root = api/
- *   deployed:    urlaub/public/api/index.php     -> api root = urlaub/api/
+ *   deployed:    vacation/public/api/index.php   -> api root = vacation/api/
  */
 
 use VacationPlanner\Api\App;

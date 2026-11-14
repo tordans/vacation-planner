@@ -1,6 +1,7 @@
 # Release plan: one shared plan on all-inkl
 
-Status: in progress, started 2026-11-14.
+Status: in progress, started 2026-11-14. Several plans with an invite word are added in
+[multi-plan.md](multi-plan.md); where this file disagrees with it, multi-plan.md wins.
 
 The app moves from GitHub Pages (plan only in the URL) to the all-inkl webspace with a small PHP
 API and one shared plan. We copy the setup of **Checking Sparks**
@@ -24,16 +25,17 @@ Earlier analyses (central storage, Google Sheets, home NAS) are in [archive/](ar
   `api/deploy/check.sh` against the live site, summary on the run page. The API applies its
   migrations itself (no migrate call from the workflow).
 - Keys: the server stores only SHA-256 digests; the keys travel in the URL fragment (`#key=…`);
-  `scripts/setup-deploy-secrets.sh` generates keys, asks for FTP/DB values and writes all secrets
-  with `gh secret set --env production`.
+  `scripts/setup-deploy-secrets.sh` asks for FTP/DB values and the invite word and writes all
+  secrets with `gh secret set --env production`. The keys themselves are made by the server when a
+  plan is created.
 
 ## What is different here
 
 | Checking Sparks                           | Vacation Planner                                                                           |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------ |
-| One family key, data encrypted in browser | Two keys: **edit** and **view**, plan stored as plain JSON                                 |
+| One family key, data encrypted in browser | Two keys per plan: **edit** and **view**, plan stored as plain JSON; several plans         |
 | Web Push, VAPID, cron job, PWA            | none of it                                                                                 |
-| Several documents and tables              | one table `plan` with one row                                                              |
+| Several documents and tables              | one table `plans` with one row per plan (plus a small table of failed invite attempts)     |
 | Tests and linters in GitHub (`ci.yml`)    | none: `bun run check-pre-push` and `bun run test-php` run locally in a Husky pre-push hook |
 | Deploy step `POST /api/migrate`           | none: the API applies pending migrations before the first request that needs the database  |
 
@@ -46,7 +48,9 @@ No MCP endpoint for the release. Checking Sparks shipped without one, and the de
 
 ## Domain
 
-`https://urlaub.ingsparks.de` (KAS folder `urlaub.ingsparks.de/`), next to `check.ingsparks.de`.
+`https://vacation.ingsparks.de` (the domain is also the brand: "vacation.ingsparks.de – Familienurlaube planen und koordinieren"; KAS folder
+`vacation.ingsparks.de/`, document root `vacation.ingsparks.de/public/`), next to
+`check.ingsparks.de`.
 It is one constant (`SITE_URL` in `deploy.yml`, plus the secrets script); change it there before
 the KAS steps if another name is wanted.
 
@@ -55,15 +59,18 @@ the KAS steps if another name is wanted.
 JSON in and out, `Cache-Control: no-store`, errors `{ "error": "<code>" }`, same origin (no CORS
 in production; local development via the Vite proxy `/api` → `http://localhost:8787`).
 
-Auth: `Authorization: Bearer <key>`. The server compares `sha256(key)` with
-`edit_key_sha256` and `view_key_sha256` (`hash_equals`) and sets the role `edit` or `view`.
-Unknown or missing key: `401`.
+Auth: `Authorization: Bearer <key>`. The key alone identifies its plan: the server looks up
+`sha256(key)` in the columns `edit_key_sha256` and `view_key_sha256` of `plans` (`hash_equals` on
+the match) and takes the role from the column that matched. Unknown or missing key: `401`. Plans
+are created with an invite word and have their own keys, see [multi-plan.md](multi-plan.md) and
+[api/README.md](../api/README.md) for the full endpoint list (`POST /api/plans`,
+`POST /api/plan/keys`).
 
-| Method + path     | Auth       | Result                                                                                                                                                                                                                                                                   |
-| ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /api/health` | none       | `200 { ok: true, commit }`, works without database                                                                                                                                                                                                                       |
-| `GET /api/plan`   | edit, view | `200 { role, plan: { version, updatedAt, data } \| null }` + `ETag: "<version>"` when a plan exists. `plan` is `null` before the first save                                                                                                                              |
-| `PUT /api/plan`   | edit       | body `{ data }`. `If-Match: "<version>"` updates, `If-None-Match: *` creates. `200 { version, updatedAt }` + `ETag`. `409 { plan: { version, updatedAt, data } }` when the version is stale or a plan already exists; `428` without precondition; `403` for the view key |
+| Method + path     | Auth       | Result                                                                                                                                                                                                                                                        |
+| ----------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/health` | none       | `200 { ok: true, commit }`, works without database                                                                                                                                                                                                            |
+| `GET /api/plan`   | edit, view | `200 { role, plan: { version, updatedAt, data } \| null }` + `ETag: "<version>"` when a plan exists. `plan` is `null` before the first save                                                                                                                   |
+| `PUT /api/plan`   | edit       | body `{ data }`. `If-Match: "<version>"` updates, `If-None-Match: *` creates. `200 { version, updatedAt }` + `ETag`. `409 { error: "conflict", plan }` when the version is stale or a plan already exists; `428` without precondition; `403` for the view key |
 
 - Migrations are not an endpoint: the API applies pending `migrations/*.sql` before the first request
   that needs the database (`/api/plan`). `GET /api/health` never touches the database.
@@ -75,27 +82,22 @@ Unknown or missing key: `401`.
   method `405` with `Allow`.
 - Logging as in Checking Sparks: only short error lines, never keys, bodies or plan data.
 
-Table:
-
-```sql
-CREATE TABLE plan (
-  id TINYINT UNSIGNED PRIMARY KEY,   -- always 1
-  data LONGTEXT NOT NULL,            -- JSON text, returned unchanged
-  version INT UNSIGNED NOT NULL,
-  updated_at DATETIME(3) NOT NULL
-);
-```
-
-(plus the migrations table from Checking Sparks).
+Tables (see `api/migrations/001_init.sql`): `plans` (`id`, `edit_key_sha256` unique,
+`view_key_sha256` unique, `data` LONGTEXT NULL until the first save, `version`, `updated_at`,
+`created_at`), `invite_attempts` (`ip_hash`, `attempted_at`), plus the migrations table from Checking
+Sparks.
 
 ## Secrets (environment `production`)
 
-Nine secrets: `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `DB_HOST`, `DB_NAME`, `DB_USER`,
-`DB_PASSWORD`, `EDIT_KEY_SHA256`, `VIEW_KEY_SHA256`. Changing a key = new value via the secrets
-script (or `gh secret set`), "Run workflow"; the old link stops working.
+Eight secrets: `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `DB_HOST`, `DB_NAME`, `DB_USER`,
+`DB_PASSWORD`, `INVITE_SHA256` (digest of the invite word). Changing the invite word = new digest
+via the secrets script (or `gh secret set`), "Run workflow". Keys are not secrets of the
+repository: each plan's keys are made by the server and managed in the app (renewing a link makes
+the old one invalid).
 
-Links: `https://urlaub.ingsparks.de/#key=<editKey>` (parents) and `…/#key=<viewKey>`
-(grandparents).
+Links: `https://vacation.ingsparks.de/#key=<editKey>` (parents) and `…/#key=<viewKey>`
+(grandparents). The family plan is created like any other: open the site after the first deploy,
+"Neuen Plan anlegen", invite word, save both links.
 
 ## App behaviour
 
@@ -123,8 +125,8 @@ Links: `https://urlaub.ingsparks.de/#key=<editKey>` (parents) and `…/#key=<vie
   - A link with `plan=` opened while a key is stored opens in URL mode with a banner and the buttons
     "Zum gemeinsamen Plan" and (edit role) "Auf den Server übernehmen".
 - **"Gut zu wissen":** where the plan lives (all-inkl in Germany, our own webspace), who can read
-  it (anyone with one of the two links), how links are changed, and that the link-only mode still
-  exists.
+  it (anyone with one of the two links), how links are renewed, that plans can only be created
+  with the invite word, and that the link-only mode still exists.
 
 ## Steps
 

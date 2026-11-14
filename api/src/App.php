@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace VacationPlanner\Api;
 
 use Closure;
+use VacationPlanner\Api\Handler\KeysHandler;
 use VacationPlanner\Api\Handler\PlanHandler;
+use VacationPlanner\Api\Handler\PlansHandler;
 
 /** Front controller: routing, auth, size limit, error mapping. */
 final class App
 {
     private const AUTH_NONE = 'none';
-    private const AUTH_PLAN = 'plan';
+    private const AUTH_KEY = 'key';
+    private const AUTH_INVITE = 'invite';
 
     private ?Db $db = null;
-    private readonly Auth $auth;
 
     /**
      * @param Closure(): Db $dbFactory called lazily, so /api/health works without a database
@@ -27,7 +29,6 @@ final class App
         private readonly Logger $logger,
         private readonly string $migrationsDir,
     ) {
-        $this->auth = new Auth($config);
     }
 
     /** Production wiring. */
@@ -82,32 +83,43 @@ final class App
             throw new HttpException(413, 'payload_too_large');
         }
 
-        // The role is 'edit' or 'view' for plan routes, '' for public routes. null means the key is
-        // missing or unknown. A view key on a write gets 403 in the handler.
-        $role = match ($route['auth']) {
-            self::AUTH_NONE => '',
-            self::AUTH_PLAN => $this->auth->role($request),
-        };
-        if ($role === null) {
-            throw new HttpException(401, 'unauthorized', [], ['WWW-Authenticate' => 'Bearer']);
+        // Key routes need a known key (edit or view; a view key on a write gets 403 in the handler).
+        // The invite route has no key: its handler checks the invite word.
+        $access = null;
+        if ($route['auth'] === self::AUTH_KEY) {
+            $token = $request->bearerToken();
+            $access = $token === null ? null : (new Auth($this->db()))->resolve($token);
+            if ($access === null) {
+                throw new HttpException(401, 'unauthorized', [], ['WWW-Authenticate' => 'Bearer']);
+            }
         }
 
-        return ($route['handler'])($request, $role);
+        return ($route['handler'])($request, $access);
     }
 
     /**
-     * @return list<array{path: string, methods: list<string>, auth: string, handler: Closure(Request, string): Response}>
+     * @return list<array{path: string, methods: list<string>, auth: string, handler: Closure(Request, ?Access): Response}>
      */
     private function routes(): array
     {
         return [
             ['path' => '/api/health', 'methods' => ['GET'], 'auth' => self::AUTH_NONE,
                 'handler' => fn (): Response => Response::json(200, ['ok' => true, 'commit' => $this->config->commit()])],
-            ['path' => '/api/plan', 'methods' => ['GET'], 'auth' => self::AUTH_PLAN,
-                'handler' => fn (Request $r, string $role): Response => $this->plan()->get($role)],
-            ['path' => '/api/plan', 'methods' => ['PUT'], 'auth' => self::AUTH_PLAN,
-                'handler' => fn (Request $r, string $role): Response => $this->plan()->put($r, $role)],
+            ['path' => '/api/plans', 'methods' => ['POST'], 'auth' => self::AUTH_INVITE,
+                'handler' => fn (Request $r): Response => (new PlansHandler($this->db(), $this->config, $this->clock))->create($r)],
+            ['path' => '/api/plan', 'methods' => ['GET'], 'auth' => self::AUTH_KEY,
+                'handler' => fn (Request $r, ?Access $a): Response => $this->plan()->get($a ?? self::noAccess())],
+            ['path' => '/api/plan', 'methods' => ['PUT'], 'auth' => self::AUTH_KEY,
+                'handler' => fn (Request $r, ?Access $a): Response => $this->plan()->put($r, $a ?? self::noAccess())],
+            ['path' => '/api/plan/keys', 'methods' => ['POST'], 'auth' => self::AUTH_KEY,
+                'handler' => fn (Request $r, ?Access $a): Response => (new KeysHandler($this->db()))->rotate($r, $a ?? self::noAccess())],
         ];
+    }
+
+    /** Key routes never run without Access (dispatch answers 401 first). */
+    private static function noAccess(): never
+    {
+        throw new HttpException(401, 'unauthorized', [], ['WWW-Authenticate' => 'Bearer']);
     }
 
     /**

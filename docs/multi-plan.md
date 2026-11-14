@@ -1,6 +1,6 @@
 # Several plans, created with an invite word
 
-Status: decided 2026-11-14, being built. Extends [release-plan.md](release-plan.md).
+Status: decided 2026-11-14, API built (this file describes what the server does). Extends [release-plan.md](release-plan.md).
 
 Friends can create their own plan, but only with an invite word that we share in person. Without
 the word nobody can create anything; without a link nobody can see anything.
@@ -8,8 +8,11 @@ the word nobody can create anything; without a link nobody can see anything.
 ## Model
 
 - One table `plans`, one row per plan:
-  `id` (auto increment, internal only), `edit_key_sha256` (unique), `view_key_sha256` (unique),
-  `data` (JSON text, `NULL` until the first save), `version`, `updated_at`, `created_at`.
+  `id` (random hex made by the API, internal only; no auto increment, so the same SQL runs on
+  MariaDB and SQLite), `edit_key_sha256` (unique), `view_key_sha256` (unique),
+  `data` (JSON text, `NULL` until the first save), `version` (0 until the first save),
+  `updated_at`, `created_at`. A second table `invite_attempts` (`ip_hash`, `attempted_at`) holds
+  failed invite attempts for one hour. Both are in `001_init.sql` (rewritten, nothing was deployed).
 - **A link identifies its plan by the key alone:** `https://vacation.ingsparks.de/#key=<key>`.
   The server looks up `sha256(key)` in both key columns, which also gives the role. There are no
   plan ids in URLs.
@@ -20,19 +23,21 @@ the word nobody can create anything; without a link nobody can see anything.
 
 ## API
 
-| Method + path         | Auth          | Result                                                                                                                                       |
-| --------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/health`     | none          | as before                                                                                                                                    |
-| `POST /api/plans`     | invite word   | body `{ invite }`. `201 { editKey, viewKey }`. Wrong word `403 invalid_invite`; too many attempts `429`; plan limit reached `503 plans_full` |
-| `GET /api/plan`       | edit/view key | as before: `{ role, plan: { version, updatedAt, data } \| null }`                                                                            |
-| `PUT /api/plan`       | edit key      | as before (If-Match / If-None-Match, 409, 428, 403 for view)                                                                                 |
-| `POST /api/plan/keys` | edit key      | body `{ which: 'view' \| 'edit' }`. Replaces that key, `200 { key }`. The old link stops working immediately                                 |
+| Method + path         | Auth          | Result                                                                                                                                                                                                                                |
+| --------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/health`     | none          | as before                                                                                                                                                                                                                             |
+| `POST /api/plans`     | invite word   | body `{ invite }`. `201 { editKey, viewKey }`. Wrong, missing or empty word `403 invalid_invite`; unparseable body `400 invalid_json`; too many attempts `429 too_many_attempts` (+ `Retry-After: 3600`); plan limit `503 plans_full` |
+| `GET /api/plan`       | edit/view key | as before: `{ role, plan: { version, updatedAt, data } \| null }`                                                                                                                                                                     |
+| `PUT /api/plan`       | edit key      | as before (If-Match / If-None-Match, 409, 428, 403 for view)                                                                                                                                                                          |
+| `POST /api/plan/keys` | edit key      | body `{ which: 'view' \| 'edit' }`. Replaces that key, `200 { key }`. The old link stops working immediately. View key `403 forbidden`; other `which` `422 invalid_request`                                                           |
 
 Abuse limits (all simple, in the database, no extra service):
 
-- Failed invite attempts are counted per IP hash (`sha256(ip + daily salt)`, no plain IPs
-  stored): at most 10 failures per hour, then `429`. Old rows are deleted on the fly.
-- At most 5 new plans per day in total and at most 100 plans overall (`503 plans_full`).
+- Failed invite attempts are counted per IP hash (`HMAC(ip, HMAC(utc date, ip_salt_secret))`, so the
+  salt changes every day and no plain IP is stored): at most 10 failures per hour, then `429`, even
+  for the right word. Old rows are deleted on the fly. `REMOTE_ADDR` only, never `X-Forwarded-For`.
+- At most 5 new plans per 24 hours in total and at most 100 plans overall (`503 plans_full`). These
+  are checked after the invite word, so strangers learn nothing about them.
 - Bodies stay limited to 64 KiB, one plan per row.
 
 ## App
@@ -50,7 +55,9 @@ Abuse limits (all simple, in the database, no extra service):
 ## Secrets after this change
 
 `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD`, `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`,
-`INVITE_SHA256`. The edit/view key secrets go away; links are managed in the app.
+`INVITE_SHA256`. The edit/view key secrets go away; links are managed in the app. The secret for
+the daily IP salt (`ip_salt_secret` in the config) is derived from `DB_PASSWORD` by the workflow
+(HMAC), so it is not a secret of its own.
 
 ## Not included (later if needed)
 

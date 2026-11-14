@@ -25,15 +25,16 @@ final class MigrateTest extends ApiTestCase
         parent::tearDown();
     }
 
-    public function testFirstPlanRequestCreatesThePlanTable(): void
+    public function testFirstPlanRequestCreatesTheTables(): void
     {
-        self::assertFalse($this->tableExists('plan'), 'a fresh database has no tables');
+        self::assertFalse($this->tableExists('plans'), 'a fresh database has no tables');
 
         $r = $this->call('GET', '/api/plan');
         self::assertSame(200, $r->status);
         self::assertSame(['role' => 'edit', 'plan' => null], $r->data());
 
-        self::assertTrue($this->tableExists('plan'));
+        self::assertTrue($this->tableExists('plans'));
+        self::assertTrue($this->tableExists('invite_attempts'));
         self::assertSame(['001_init.sql'], array_column($this->db->all('SELECT name FROM migrations'), 'name'));
     }
 

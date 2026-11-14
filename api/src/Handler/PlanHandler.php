@@ -6,13 +6,14 @@ namespace VacationPlanner\Api\Handler;
 
 use Closure;
 use stdClass;
+use VacationPlanner\Api\Access;
 use VacationPlanner\Api\Db;
 use VacationPlanner\Api\HttpException;
 use VacationPlanner\Api\Request;
 use VacationPlanner\Api\Response;
 
 /**
- * GET and PUT /api/plan: the one shared plan (table `plan`, row id 1).
+ * GET and PUT /api/plan: the plan the key belongs to (one row of `plans`, found by the Auth class).
  *
  * `data` is stored as JSON text and returned unchanged; the server only checks that it is a JSON
  * object. Writes are conditional: If-Match with the current version updates, If-None-Match: *
@@ -20,7 +21,6 @@ use VacationPlanner\Api\Response;
  */
 final class PlanHandler
 {
-    private const ROW_ID = 1;
     private const JSON_FLAGS = JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR;
 
     /** @param Closure(): \DateTimeImmutable $clock */
@@ -28,21 +28,20 @@ final class PlanHandler
     {
     }
 
-    /** @param string $role 'edit' or 'view' */
-    public function get(string $role): Response
+    public function get(Access $access): Response
     {
-        $row = $this->current();
+        $row = $this->current($access->planId);
         if ($row === null) {
-            return Response::json(200, ['role' => $role, 'plan' => null]);
+            return Response::json(200, ['role' => $access->role, 'plan' => null]);
         }
 
-        return Response::raw(200, '{"role":' . json_encode($role) . ',"plan":' . self::planJson($row) . '}', self::etag($row));
+        return Response::raw(200, '{"role":' . json_encode($access->role) . ',"plan":' . self::planJson($row) . '}', self::etag($row));
     }
 
-    /** @param string $role 'edit' or 'view' (only edit may write) */
-    public function put(Request $request, string $role): Response
+    /** Only the edit role may write. */
+    public function put(Request $request, Access $access): Response
     {
-        if ($role !== 'edit') {
+        if (!$access->canEdit()) {
             throw new HttpException(403, 'forbidden');
         }
 
@@ -62,43 +61,39 @@ final class PlanHandler
         $stamp = $now->setTimezone(new \DateTimeZone('UTC'))->format('Y-m-d H:i:s.v');
 
         return $createOnly
-            ? $this->create($json, $stamp, $now)
-            : $this->update((string) $ifMatch, $json, $stamp, $now);
+            ? $this->create($access->planId, $json, $stamp, $now)
+            : $this->update($access->planId, (string) $ifMatch, $json, $stamp, $now);
     }
 
-    private function create(string $json, string $stamp, \DateTimeImmutable $now): Response
+    /** Creates the first version: only a plan row that has no data yet can be filled. */
+    private function create(string $id, string $json, string $stamp, \DateTimeImmutable $now): Response
     {
-        try {
-            $this->db->run(
-                'INSERT INTO plan (id, data, version, updated_at) VALUES (?, ?, 1, ?)',
-                [self::ROW_ID, $json, $stamp],
-            );
-        } catch (\PDOException $e) {
-            if (!Db::isUniqueViolation($e)) {
-                throw $e;
-            }
-
-            return $this->conflict();
+        $changed = $this->db->run(
+            'UPDATE plans SET data = ?, version = 1, updated_at = ? WHERE id = ? AND data IS NULL',
+            [$json, $stamp, $id],
+        );
+        if ($changed !== 1) {
+            return $this->conflict($id);
         }
 
         return Response::json(200, ['version' => 1, 'updatedAt' => self::iso($now)], ['ETag' => self::quote(1)]);
     }
 
-    private function update(string $ifMatch, string $json, string $stamp, \DateTimeImmutable $now): Response
+    private function update(string $id, string $ifMatch, string $json, string $stamp, \DateTimeImmutable $now): Response
     {
-        $row = $this->current();
+        $row = $this->current($id);
         $expected = self::parseVersion($ifMatch);
         if ($row === null || $expected === null || (int) $row['version'] !== $expected) {
-            return $this->conflict();
+            return $this->conflict($id);
         }
 
         $changed = $this->db->run(
-            'UPDATE plan SET data = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ?',
-            [$json, $stamp, self::ROW_ID, $expected],
+            'UPDATE plans SET data = ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ? AND data IS NOT NULL',
+            [$json, $stamp, $id, $expected],
         );
         if ($changed !== 1) {
             // Someone saved between the read and the write.
-            return $this->conflict();
+            return $this->conflict($id);
         }
 
         return Response::json(
@@ -109,9 +104,9 @@ final class PlanHandler
     }
 
     /** 409 with the current plan (or null when there is none). */
-    private function conflict(): Response
+    private function conflict(string $id): Response
     {
-        $row = $this->current();
+        $row = $this->current($id);
 
         return Response::raw(
             409,
@@ -120,10 +115,10 @@ final class PlanHandler
         );
     }
 
-    /** @return array<string, mixed>|null */
-    private function current(): ?array
+    /** @return array<string, mixed>|null the saved plan, or null while the plan has no data yet */
+    private function current(string $id): ?array
     {
-        return $this->db->one('SELECT data, version, updated_at FROM plan WHERE id = ?', [self::ROW_ID]);
+        return $this->db->one('SELECT data, version, updated_at FROM plans WHERE id = ? AND data IS NOT NULL', [$id]);
     }
 
     /** "3", W/"3" and 3 all mean version 3; anything else is null (a stale precondition). */

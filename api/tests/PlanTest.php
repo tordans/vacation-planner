@@ -27,17 +27,55 @@ final class PlanTest extends ApiTestCase
         return $r;
     }
 
-    private function viewKey(): array
-    {
-        return ['Authorization' => 'Bearer ' . self::VIEW_KEY];
-    }
-
     public function testReadWithoutPlanReturnsNullPlan(): void
     {
         $r = $this->call('GET', '/api/plan');
         self::assertSame(200, $r->status);
         self::assertSame(['role' => 'edit', 'plan' => null], $this->data($r));
         self::assertNull($r->header('ETag'));
+    }
+
+    public function testTheTwoPlansOfTwoFamiliesAreIsolated(): void
+    {
+        $a = $this->newPlan();
+        $b = $this->newPlan();
+        self::assertNotSame($a['editKey'], $b['editKey']);
+
+        $putA = $this->call('PUT', '/api/plan', ['data' => self::FIRST], ['If-None-Match' => '*', ...self::bearer($a['editKey'])], auth: false);
+        self::assertSame(200, $putA->status);
+
+        // B does not see A's plan, and A's data is not B's.
+        $getB = $this->call('GET', '/api/plan', headers: self::bearer($b['editKey']), auth: false);
+        self::assertSame(['role' => 'edit', 'plan' => null], $this->data($getB));
+        self::assertNull($getB->header('ETag'));
+        $getBView = $this->call('GET', '/api/plan', headers: self::bearer($b['viewKey']), auth: false);
+        self::assertSame(['role' => 'view', 'plan' => null], $this->data($getBView));
+
+        // B creates its own first version: it is not a conflict with A's plan.
+        $putB = $this->call('PUT', '/api/plan', ['data' => self::SECOND], ['If-None-Match' => '*', ...self::bearer($b['editKey'])], auth: false);
+        self::assertSame(200, $putB->status);
+        self::assertSame(1, $this->data($putB)['version']);
+
+        // B updates and A's version does not move.
+        $this->call('PUT', '/api/plan', ['data' => ['v' => 1, 'trips' => []]], ['If-Match' => '"1"', ...self::bearer($b['editKey'])], auth: false);
+        $planA = $this->data($this->call('GET', '/api/plan', headers: self::bearer($a['viewKey']), auth: false))['plan'];
+        self::assertSame(1, $planA['version']);
+        self::assertSame(self::FIRST, $planA['data']);
+        $planB = $this->data($this->call('GET', '/api/plan', headers: self::bearer($b['viewKey']), auth: false))['plan'];
+        self::assertSame(2, $planB['version']);
+
+        // A's view key is read only for A: B's data can not be written with it either.
+        $deny = $this->call('PUT', '/api/plan', ['data' => self::SECOND], ['If-Match' => '"2"', ...self::bearer($a['viewKey'])], auth: false);
+        self::assertSame(403, $deny->status);
+        self::assertSame(2, $this->data($this->call('GET', '/api/plan', headers: self::bearer($b['viewKey']), auth: false))['plan']['version']);
+    }
+
+    public function testViewAndEditRoleOfEachPlan(): void
+    {
+        foreach ([$this->newPlan(), $this->newPlan()] as $keys) {
+            self::assertSame('edit', $this->data($this->call('GET', '/api/plan', headers: self::bearer($keys['editKey']), auth: false))['role']);
+            self::assertSame('view', $this->data($this->call('GET', '/api/plan', headers: self::bearer($keys['viewKey']), auth: false))['role']);
+        }
     }
 
     public function testCreateWithIfNoneMatchStoresThePlan(): void
@@ -145,17 +183,17 @@ final class PlanTest extends ApiTestCase
     {
         $this->create();
 
-        $get = $this->call('GET', '/api/plan', headers: $this->viewKey(), auth: false);
+        $get = $this->call('GET', '/api/plan', headers: self::bearer($this->viewKey()), auth: false);
         self::assertSame(200, $get->status);
         $body = $this->data($get);
         self::assertSame('view', $body['role']);
         self::assertSame(self::FIRST, $body['plan']['data']);
 
-        $put = $this->put(self::SECOND, ['If-Match' => '"1"', 'Authorization' => 'Bearer ' . self::VIEW_KEY]);
+        $put = $this->put(self::SECOND, ['If-Match' => '"1"', 'Authorization' => 'Bearer ' . $this->viewKey()]);
         self::assertSame(403, $put->status);
         self::assertSame(['error' => 'forbidden'], $put->data());
 
-        $create = $this->put(self::SECOND, ['If-None-Match' => '*', 'Authorization' => 'Bearer ' . self::VIEW_KEY]);
+        $create = $this->put(self::SECOND, ['If-None-Match' => '*', 'Authorization' => 'Bearer ' . $this->viewKey()]);
         self::assertSame(403, $create->status);
 
         self::assertSame(self::FIRST, $this->data($this->call('GET', '/api/plan'))['plan']['data']);
