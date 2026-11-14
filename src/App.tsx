@@ -6,6 +6,7 @@ import {
 } from '@heroicons/react/20/solid'
 import { useState } from 'react'
 import { INFO_TOPICS, InfoFooter, showInfoTopic } from '@/components/InfoFooter'
+import { buttonClass } from '@/components/ui/classes'
 import { SavedDisplay } from '@/components/ui/DateDisplay'
 import { DetailGantt } from '@/features/detail-gantt/DetailGantt'
 import { MAX_RANGE_DAYS } from '@/features/detail-gantt/gantt-scale'
@@ -13,22 +14,64 @@ import { federalStateByCode } from '@/features/holidays/federal-states'
 import { useCalendar } from '@/features/holidays/use-calendar'
 import { useHouseholdHolidays } from '@/features/holidays/use-household-holidays'
 import { readLastPlan } from '@/features/plan/last-plan'
-import { usePlan, useView } from '@/features/plan/use-plan'
+import { PlanProvider } from '@/features/plan/PlanProvider'
+import { usePlan, useServerControls, useView } from '@/features/plan/use-plan'
+import { AccessMenu } from '@/features/server/AccessMenu'
+import { SaveStatus } from '@/features/server/SaveStatus'
+import { ServerNotices } from '@/features/server/ServerNotices'
 import { CalendarDialog } from '@/features/settings/CalendarDialog'
 import { HouseholdsDialog } from '@/features/settings/HouseholdsDialog'
 import { SettingsDialog } from '@/features/settings/SettingsDialog'
 import { YearOverview } from '@/features/year-overview/YearOverview'
 import { addDays, daysBetween, formatSavedCompact, formatSavedFull, yearOf } from '@/lib/dates'
 
-const buttonClass =
-  'inline-flex h-9 items-center gap-1.5 rounded-md bg-white px-3 text-sm font-medium ring-1 ring-zinc-300 ring-inset hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-sky-600'
-
 export default function App() {
-  const { plan, commit, saved, hasPlan } = usePlan()
+  return (
+    <PlanProvider>
+      <AppGate />
+    </PlanProvider>
+  )
+}
+
+/** The shared plan has to arrive before the first screen: what is shown first depends on it. */
+function AppGate() {
+  const server = useServerControls()
+  if (server.load === 'ready') return <Planner />
+  return (
+    <div className="mx-auto max-w-[96rem] space-y-3 px-4 py-6 sm:px-6">
+      <title>Urlaubsplaner</title>
+      <h1 className="text-xl font-semibold tracking-tight">Urlaubsplaner</h1>
+      {server.load === 'loading' ? (
+        <p className="text-sm text-zinc-600">Gemeinsamer Plan wird geladen …</p>
+      ) : (
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-red-800">
+          Der gemeinsame Plan konnte nicht geladen werden. Bitte die Verbindung prüfen.
+          <button
+            type="button"
+            className="font-semibold underline underline-offset-2"
+            onClick={server.reload}
+          >
+            Erneut versuchen
+          </button>
+          <button
+            type="button"
+            className="font-semibold underline underline-offset-2"
+            onClick={server.signOut}
+          >
+            Auf diesem Gerät abmelden
+          </button>
+        </p>
+      )}
+    </div>
+  )
+}
+
+function Planner() {
+  const { plan, commit, saved, hasPlan, mode, readOnly } = usePlan()
   const view = useView()
   const { year } = view
   const [lastPlan] = useState(() => (hasPlan ? null : readLastPlan()))
-  const [settingsOpen, setSettingsOpen] = useState(!hasPlan && lastPlan === null)
+  const [settingsOpen, setSettingsOpen] = useState(!readOnly && !hasPlan && lastPlan === null)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [householdsOpen, setHouseholdsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -76,15 +119,22 @@ export default function App() {
 
       <header className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Urlaubsplaner</h1>
+          <h1 className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xl font-semibold tracking-tight">
+            Urlaubsplaner
+            {readOnly && (
+              <span className="rounded-full bg-zinc-200 px-2.5 py-0.5 text-xs font-medium tracking-normal text-zinc-700">
+                Nur ansehen
+              </span>
+            )}
+          </h1>
           <p className="mt-0.5 text-sm text-zinc-600">
-            <SavedDisplay stamp={saved} />
+            {mode === 'server' ? <SaveStatus /> : <SavedDisplay stamp={saved} />}
             <button
               type="button"
               className="ml-2 text-sky-700 underline underline-offset-2 hover:text-sky-900 print:hidden"
               onClick={() => showInfoTopic(INFO_TOPICS.keeping)}
             >
-              Wie sichere ich den Plan?
+              {mode === 'server' ? 'Wo liegt der Plan?' : 'Wie sichere ich den Plan?'}
             </button>
           </p>
         </div>
@@ -109,25 +159,37 @@ export default function App() {
               <ChevronRightIcon className="size-5" />
             </button>
           </div>
-          <button type="button" className={buttonClass} onClick={() => setSettingsOpen(true)}>
-            <Cog6ToothIcon className="size-4 text-zinc-500" />
-            {federalState.name}
-          </button>
-          <button type="button" className={buttonClass} onClick={() => void copyLink()}>
-            <LinkIcon className="size-4 text-zinc-500" />
-            {copied ? 'Link kopiert' : 'Link kopieren'}
-          </button>
-          <button
-            type="button"
-            className="text-sm text-sky-700 underline underline-offset-2 hover:text-sky-900"
-            onClick={() => showInfoTopic(INFO_TOPICS.storage)}
-          >
-            Was steckt im Link?
-          </button>
+          {readOnly ? (
+            <span className="px-1 text-sm font-medium text-zinc-700">{federalState.name}</span>
+          ) : (
+            <button type="button" className={buttonClass} onClick={() => setSettingsOpen(true)}>
+              <Cog6ToothIcon className="size-4 text-zinc-500" />
+              {federalState.name}
+            </button>
+          )}
+          {mode === 'server' ? (
+            <AccessMenu />
+          ) : (
+            <>
+              <button type="button" className={buttonClass} onClick={() => void copyLink()}>
+                <LinkIcon className="size-4 text-zinc-500" />
+                {copied ? 'Link kopiert' : 'Link kopieren'}
+              </button>
+              <button
+                type="button"
+                className="text-sm text-sky-700 underline underline-offset-2 hover:text-sky-900"
+                onClick={() => showInfoTopic(INFO_TOPICS.storage)}
+              >
+                Was steckt im Link?
+              </button>
+            </>
+          )}
         </div>
       </header>
 
-      {lastPlan && !hasPlan && (
+      <ServerNotices />
+
+      {mode === 'url' && lastPlan && !hasPlan && (
         <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-950 ring-1 ring-sky-200">
           In diesem Browser wurde zuletzt ein Plan bearbeitet, zuletzt am{' '}
           {formatSavedFull(lastPlan.saved)}.{' '}
@@ -171,6 +233,7 @@ export default function App() {
             showOthers={view.showOthers}
             householdHolidays={householdHolidays}
             onEditHouseholds={() => setHouseholdsOpen(true)}
+            readOnly={readOnly}
           />
         ) : (
           <YearOverview
@@ -178,40 +241,44 @@ export default function App() {
             year={year}
             calendar={calendar}
             onOpenRange={(next) => view.openRange(next.start, next.end)}
-            onEditCalendar={() => setCalendarOpen(true)}
+            onEditCalendar={readOnly ? undefined : () => setCalendarOpen(true)}
             showOthers={view.showOthers}
             onShowOthers={view.setShowOthers}
             householdHolidays={householdHolidays}
-            onEditHouseholds={() => setHouseholdsOpen(true)}
+            onEditHouseholds={readOnly ? undefined : () => setHouseholdsOpen(true)}
           />
         )}
       </main>
 
       <InfoFooter />
 
-      <HouseholdsDialog
-        open={householdsOpen}
-        onClose={() => setHouseholdsOpen(false)}
-        plan={plan}
-        year={year}
-        onCommit={commit}
-      />
-      <CalendarDialog
-        open={calendarOpen}
-        onClose={() => setCalendarOpen(false)}
-        plan={plan}
-        year={year}
-        source={source}
-        federalStateName={federalState.name}
-        onCommit={commit}
-      />
-      <SettingsDialog
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        plan={plan}
-        year={year}
-        onCommit={commit}
-      />
+      {!readOnly && (
+        <>
+          <HouseholdsDialog
+            open={householdsOpen}
+            onClose={() => setHouseholdsOpen(false)}
+            plan={plan}
+            year={year}
+            onCommit={commit}
+          />
+          <CalendarDialog
+            open={calendarOpen}
+            onClose={() => setCalendarOpen(false)}
+            plan={plan}
+            year={year}
+            source={source}
+            federalStateName={federalState.name}
+            onCommit={commit}
+          />
+          <SettingsDialog
+            open={settingsOpen}
+            onClose={() => setSettingsOpen(false)}
+            plan={plan}
+            year={year}
+            onCommit={commit}
+          />
+        </>
+      )}
     </div>
   )
 }

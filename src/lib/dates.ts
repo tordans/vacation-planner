@@ -154,6 +154,12 @@ export function savedStampNow(now: number = Date.now()): SavedStamp {
   return format(new TZDate(now, APP_TIME_ZONE), "yyyy-MM-dd'T'HH:mm", dateOptions)
 }
 
+/** `updatedAt` of the server (ISO 8601 UTC) as a stamp in Berlin time; `undefined` if unreadable. */
+export function savedStampFromIso(iso: string): SavedStamp | undefined {
+  const time = Date.parse(iso)
+  return Number.isNaN(time) ? undefined : savedStampNow(time)
+}
+
 function parseSavedStamp(stamp: SavedStamp) {
   const day = parseDay(stamp.slice(0, 10))
   return new TZDate(
@@ -169,6 +175,13 @@ function parseSavedStamp(stamp: SavedStamp) {
 /** "06.10.2026 14:32" */
 export function formatSavedCompact(stamp: SavedStamp) {
   return format(parseSavedStamp(stamp), 'dd.MM.yyyy HH:mm', dateOptions)
+}
+
+/** "14:32" on the same day, otherwise "06.10.2026 14:32". */
+export function formatSavedShort(stamp: SavedStamp, now: number = Date.now()) {
+  return stamp.slice(0, 10) === today(now)
+    ? format(parseSavedStamp(stamp), 'HH:mm', dateOptions)
+    : formatSavedCompact(stamp)
 }
 
 /** "Di, 06.10.2026, 14:32 Uhr" */

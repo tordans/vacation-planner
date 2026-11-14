@@ -39,7 +39,8 @@ function fromWireParent(role: ParentRole, wire: WirePlan['p'][number]): Parent {
   return { role, name: wire.n ?? '', workingDays: [...new Set(wire.w)], leaveDaysByYear }
 }
 
-function toWire(plan: Plan): WirePlan {
+/** The plan in wire format: what the link compresses and what the server stores as is. */
+export function toWire(plan: Plan): WirePlan {
   return {
     v: 1,
     s: plan.federalState,
@@ -172,6 +173,12 @@ export function withFreshIds(plan: Plan): Plan {
 
 export function encodePlan(plan: Plan) {
   return compressToEncodedURIComponent(JSON.stringify(toWire(plan)))
+}
+
+/** Wire format from the server; `null` when it is not a plan this version understands. */
+export function decodeWirePlan(data: unknown): Plan | null {
+  const result = wirePlanSchema.safeParse(data)
+  return result.success ? fromWire(result.data) : null
 }
 
 /** Never throws: a broken or outdated link falls back to an empty plan. */

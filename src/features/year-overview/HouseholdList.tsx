@@ -14,7 +14,7 @@ type HouseholdListProps = {
   today: IsoDay
   showOthers: boolean
   onShowOthers: (show: boolean) => void
-  onEditHouseholds: () => void
+  onEditHouseholds: (() => void) | undefined
 }
 
 const PAST_ROW_CLASS =
@@ -37,20 +37,28 @@ export function HouseholdList({
     <section className="rounded-lg bg-white p-4 shadow-xs ring-1 ring-zinc-200">
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold">Andere Haushalte {year}</h3>
-        <button type="button" className={EDIT_BUTTON_CLASS} onClick={onEditHouseholds}>
-          Bearbeiten
-        </button>
+        {onEditHouseholds && (
+          <button type="button" className={EDIT_BUTTON_CLASS} onClick={onEditHouseholds}>
+            Bearbeiten
+          </button>
+        )}
       </div>
 
       {households.length === 0 ? (
         <div className="mt-2 flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-600">
-          <p>
-            Füge Großeltern oder Cousinen als andere Haushalte hinzu, um ihre Schulferien und
-            Abwesenheiten zu sehen. Das beeinflusst deine Planung nicht.
-          </p>
-          <button type="button" className={EDIT_BUTTON_CLASS} onClick={onEditHouseholds}>
-            Haushalt hinzufügen
-          </button>
+          {onEditHouseholds ? (
+            <>
+              <p>
+                Füge Großeltern oder Cousinen als andere Haushalte hinzu, um ihre Schulferien und
+                Abwesenheiten zu sehen. Das beeinflusst deine Planung nicht.
+              </p>
+              <button type="button" className={EDIT_BUTTON_CLASS} onClick={onEditHouseholds}>
+                Haushalt hinzufügen
+              </button>
+            </>
+          ) : (
+            <p>Keine anderen Haushalte eingetragen.</p>
+          )}
         </div>
       ) : !showOthers ? (
         <div className="mt-2 flex items-center justify-between gap-3 text-sm text-zinc-600">

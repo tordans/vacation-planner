@@ -30,3 +30,22 @@ export function readLastPlan(): LastPlan | null {
     return null
   }
 }
+
+const OFFER_DISMISSED_KEY = 'vacation-planner:last-plan-offer-dismissed:v1'
+
+/** The offer to move the last local plan to the server is made until it is taken or declined. */
+export function isLastPlanOfferDismissed() {
+  try {
+    return localStorage.getItem(OFFER_DISMISSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function dismissLastPlanOffer() {
+  try {
+    localStorage.setItem(OFFER_DISMISSED_KEY, '1')
+  } catch {
+    // Blocked storage: the offer simply shows again next time.
+  }
+}

@@ -10,9 +10,11 @@ import {
   formatSavedCompact,
   formatSavedFull,
   formatSavedRelative,
+  formatSavedShort,
   isIsoDay,
   isoWeekday,
   isSavedStamp,
+  savedStampFromIso,
   savedStampNow,
   today,
 } from '@/lib/dates'
@@ -87,5 +89,19 @@ describe('saved stamp', () => {
     expect(formatSavedFull('2026-10-06T14:32')).toBe('Di, 06.10.2026, 14:32 Uhr')
     expect(formatSavedRelative('2026-10-06T14:32', now)).toBe('gerade eben')
     expect(formatSavedRelative('2026-09-15T09:00', now)).toBe('vor 3 Wochen')
+  })
+})
+
+describe('server timestamps', () => {
+  it('converts updatedAt (UTC) to a stamp in Berlin time', () => {
+    expect(savedStampFromIso('2026-11-14T12:32:10.123Z')).toBe('2026-11-14T13:32')
+    expect(savedStampFromIso('2026-07-14T12:32:10.123Z')).toBe('2026-07-14T14:32')
+    expect(savedStampFromIso('not a date')).toBeUndefined()
+  })
+
+  it('shows only the time for today, the date otherwise', () => {
+    const now = Date.parse('2026-11-14T15:00:00Z')
+    expect(formatSavedShort('2026-11-14T13:32', now)).toBe('13:32')
+    expect(formatSavedShort('2026-11-13T13:32', now)).toBe('13.11.2026 13:32')
   })
 })

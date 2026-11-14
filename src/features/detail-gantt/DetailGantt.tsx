@@ -5,7 +5,14 @@ import {
   MinusIcon,
   PlusIcon,
 } from '@heroicons/react/20/solid'
-import { useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
+import {
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from 'react'
 import { DateRangeDisplay } from '@/components/ui/DateDisplay'
 import { Tooltip } from '@/components/ui/tooltip'
 import { federalStateByCode } from '@/features/holidays/federal-states'
@@ -137,6 +144,8 @@ type DetailGanttProps = {
   /** School holidays per federal state code, for the other households. */
   householdHolidays: Map<string, Period[]>
   onEditHouseholds: () => void
+  /** View role: look at everything, change nothing (no dragging, no editors). */
+  readOnly: boolean
 }
 
 const rowClass = 'relative h-11 border-t border-zinc-200'
@@ -167,6 +176,7 @@ export function DetailGantt({
   showOthers,
   householdHolidays,
   onEditHouseholds,
+  readOnly,
 }: DetailGanttProps) {
   const now = useNow()
   const [zoomIndex, setZoomIndex] = useState(DEFAULT_ZOOM_INDEX)
@@ -202,7 +212,7 @@ export function DetailGantt({
 
   function startCreate(row: EditableRow, event: PointerEvent<HTMLDivElement>) {
     // Touch scrolls the timeline; a tap creates instead (see handleRowClick).
-    if (event.button !== 0 || event.pointerType === 'touch') return
+    if (readOnly || event.button !== 0 || event.pointerType === 'touch') return
     const day = pointerDay(event.clientX)
     const anchor = { start: day, end: day }
     const window = freeWindow(blockersOn(plan, row), anchor, range)
@@ -223,7 +233,7 @@ export function DetailGantt({
 
   function handleRowClick(row: EditableRow, event: MouseEvent<HTMLDivElement>) {
     const native = event.nativeEvent
-    if (!(native instanceof PointerEvent) || native.pointerType !== 'touch') return
+    if (readOnly || !(native instanceof PointerEvent) || native.pointerType !== 'touch') return
     if (event.target !== event.currentTarget) return
     const day = pointerDay(event.clientX)
     const period = { start: day, end: day }
@@ -242,6 +252,10 @@ export function DetailGantt({
     event.stopPropagation()
     // preventDefault suppresses focus; focus by hand so the arrow keys work after a click.
     event.currentTarget.closest<HTMLElement>('[role="button"]')?.focus()
+    if (readOnly) {
+      setSelection({ type: selectionType(row), id })
+      return
+    }
     capturePointer(event)
     const limits = { start: minDay(range.start, bar.start), end: maxDay(range.end, bar.end) }
     const window = movableWindow(blockersOn(plan, row, id), bar, limits)
@@ -296,6 +310,7 @@ export function DetailGantt({
       setSelection({ type, id })
       return
     }
+    if (readOnly) return
     if (event.key === 'Delete' || event.key === 'Backspace') {
       event.preventDefault()
       setSelection(null)
@@ -324,6 +339,7 @@ export function DetailGantt({
 
   function barHandlers(row: EditableRow, id: string, bar: DayRange) {
     return {
+      readOnly,
       isDragging: drag?.row === row && drag.id === id,
       onMoveStart: (event: PointerEvent<HTMLDivElement>) =>
         startBarDrag(row, id, 'move', bar, event),
@@ -350,6 +366,7 @@ export function DetailGantt({
     )
   }
 
+  const createCursor = readOnly ? undefined : 'cursor-crosshair'
   const fixed = fixedEntries(plan)
   const lanes = ideaLanes(plan.entries.filter((entry) => entry.isIdea))
 
@@ -471,22 +488,14 @@ export function DetailGantt({
                 Andere Haushalte
               </div>
               {plan.households.map((household) => (
-                <button
-                  key={household.id}
-                  type="button"
-                  className={cn(
-                    labelClass,
-                    'w-full flex-col items-start justify-center gap-0 text-left leading-tight text-zinc-600 hover:bg-zinc-100',
-                  )}
-                  onClick={onEditHouseholds}
-                >
+                <HouseholdLabel key={household.id} readOnly={readOnly} onEdit={onEditHouseholds}>
                   <span className="w-full truncate">{household.name || 'Haushalt'}</span>
                   {household.federalState && (
                     <span className="text-[0.625rem] font-normal text-zinc-500">
                       Ferien {federalStateByCode(household.federalState).name}
                     </span>
                   )}
-                </button>
+                </HouseholdLabel>
               ))}
             </>
           )}
@@ -627,7 +636,7 @@ export function DetailGantt({
 
             {/* Where: family entries */}
             <div
-              className={cn(rowClass, 'cursor-crosshair bg-sky-50/40')}
+              className={cn(rowClass, 'bg-sky-50/40', createCursor)}
               onPointerDown={(event) => startCreate('family', event)}
               onClick={(event) => handleRowClick('family', event)}
             >
@@ -714,11 +723,11 @@ export function DetailGantt({
               </div>
             ))}
             <div
-              className={cn(ideaRowClass, 'cursor-crosshair')}
+              className={cn(ideaRowClass, createCursor)}
               onPointerDown={(event) => startCreate('idea', event)}
               onClick={(event) => handleRowClick('idea', event)}
             >
-              {lanes.length === 0 && (
+              {lanes.length === 0 && !readOnly && (
                 <span className="pointer-events-none sticky left-2 inline-block pt-2.5 pl-2 text-xs text-zinc-400">
                   Idee aufziehen, z. B. „Bei Oma & Opa“ – Ideen dürfen sich überschneiden
                 </span>
@@ -730,7 +739,7 @@ export function DetailGantt({
             {PARENT_ROLES.map((role) => (
               <div
                 key={role}
-                className={cn(rowClass, 'cursor-crosshair')}
+                className={cn(rowClass, createCursor)}
                 onPointerDown={(event) => startCreate(role, event)}
                 onClick={(event) => handleRowClick(role, event)}
               >
@@ -742,6 +751,7 @@ export function DetailGantt({
                     activeClass={STAY_STYLES[entry.kind].bar}
                     name={parentLabel(plan, role)}
                     detail={`${rangeCost(plan, role, entry, calendar)} Urlaubstage`}
+                    readOnly={readOnly}
                     onToggle={() => onCommit(toggleCarer(plan, entry.id, role))}
                   />
                 ))}
@@ -801,6 +811,7 @@ export function DetailGantt({
                   activeClass={CARER_STYLES.grandparents.bar}
                   name="Großeltern"
                   detail="kein Urlaub nötig"
+                  readOnly={readOnly}
                   onToggle={() => onCommit(toggleCarer(plan, entry.id, 'grandparents'))}
                 />
               ))}
@@ -813,7 +824,7 @@ export function DetailGantt({
                 {plan.households.map((household) => (
                   <div
                     key={household.id}
-                    className={cn(rowClass, 'cursor-crosshair')}
+                    className={cn(rowClass, createCursor)}
                     onPointerDown={(event) => startCreate(household.id, event)}
                     onClick={(event) => handleRowClick(household.id, event)}
                   >
@@ -901,6 +912,7 @@ export function DetailGantt({
         onCommit={onCommit}
         onDeselect={() => setSelection(null)}
         onSelect={setSelection}
+        readOnly={readOnly}
       />
     </div>
   )
@@ -912,12 +924,39 @@ type CarerSlotProps = {
   activeClass: string
   name: string
   detail: string
+  readOnly: boolean
   onToggle: () => void
 }
 
 /** The stretch of a family entry in a carer's row. Click switches that carer on or off. */
-function CarerSlot({ box, isActive, activeClass, name, detail, onToggle }: CarerSlotProps) {
+function CarerSlot({
+  box,
+  isActive,
+  activeClass,
+  name,
+  detail,
+  readOnly,
+  onToggle,
+}: CarerSlotProps) {
   if (!box) return null
+  if (readOnly) {
+    // Viewers only see who takes care, not the empty "+ betreut" slots.
+    if (!isActive) return null
+    return (
+      <div className="absolute inset-y-2.5 z-10" style={{ left: box.left, width: box.width }}>
+        <Tooltip className="size-full" content={`${name} betreut · ${detail}`}>
+          <div
+            className={cn(
+              'size-full overflow-hidden rounded-md px-2 text-xs/6 font-medium whitespace-nowrap text-white shadow-sm',
+              activeClass,
+            )}
+          >
+            {detail}
+          </div>
+        </Tooltip>
+      </div>
+    )
+  }
   return (
     <div className="absolute inset-y-2.5 z-10" style={{ left: box.left, width: box.width }}>
       <Tooltip
@@ -946,5 +985,26 @@ function CarerSlot({ box, isActive, activeClass, name, detail, onToggle }: Carer
         </button>
       </Tooltip>
     </div>
+  )
+}
+
+type HouseholdLabelProps = {
+  readOnly: boolean
+  onEdit: () => void
+  children: ReactNode
+}
+
+/** Row label of another household; opens the households dialog unless the plan is read-only. */
+function HouseholdLabel({ readOnly, onEdit, children }: HouseholdLabelProps) {
+  const className = cn(
+    labelClass,
+    'w-full flex-col items-start justify-center gap-0 text-left leading-tight text-zinc-600',
+    !readOnly && 'hover:bg-zinc-100',
+  )
+  if (readOnly) return <div className={className}>{children}</div>
+  return (
+    <button type="button" className={className} onClick={onEdit}>
+      {children}
+    </button>
   )
 }

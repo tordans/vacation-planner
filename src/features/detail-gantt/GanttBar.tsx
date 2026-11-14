@@ -13,6 +13,8 @@ type GanttBarProps = {
   isSelected: boolean
   /** True while this bar follows the pointer: no easing, it must stick to the cursor. */
   isDragging: boolean
+  /** View role: the bar can be selected, but not moved or resized. */
+  readOnly: boolean
   onMoveStart: (event: PointerEvent<HTMLDivElement>) => void
   onResizeStart: (event: PointerEvent<HTMLDivElement>) => void
   onResizeEnd: (event: PointerEvent<HTMLDivElement>) => void
@@ -31,6 +33,7 @@ export function GanttBar({
   className,
   isSelected,
   isDragging,
+  readOnly,
   onMoveStart,
   onResizeStart,
   onResizeEnd,
@@ -44,7 +47,8 @@ export function GanttBar({
       aria-label={ariaLabel}
       aria-pressed={isSelected}
       className={cn(
-        'group/bar absolute inset-y-1.5 z-10 cursor-grab touch-none rounded-md text-xs font-medium text-white shadow-sm outline-none select-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-1 active:cursor-grabbing',
+        'group/bar absolute inset-y-1.5 z-10 touch-none rounded-md text-xs font-medium text-white shadow-sm outline-none select-none focus-visible:ring-2 focus-visible:ring-zinc-900 focus-visible:ring-offset-1',
+        readOnly ? 'cursor-pointer' : 'cursor-grab active:cursor-grabbing',
         box.clippedStart && 'rounded-l-none',
         box.clippedEnd && 'rounded-r-none',
         isSelected && 'ring-2 ring-zinc-900 ring-offset-1',
@@ -63,7 +67,7 @@ export function GanttBar({
       <Tooltip className="size-full items-center overflow-hidden px-2" content={tooltip}>
         <span className="truncate">{label}</span>
       </Tooltip>
-      {!box.clippedStart && (
+      {!readOnly && !box.clippedStart && (
         <div
           className={cn(
             handleClass,
@@ -73,7 +77,7 @@ export function GanttBar({
           onPointerDown={onResizeStart}
         />
       )}
-      {!box.clippedEnd && (
+      {!readOnly && !box.clippedEnd && (
         <div
           className={cn(
             handleClass,

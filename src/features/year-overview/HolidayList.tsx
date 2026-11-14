@@ -11,7 +11,7 @@ type HolidayListProps = {
   gaps: Set<IsoDay>
   today: IsoDay
   onOpen: (range: DayRange) => void
-  onEdit: () => void
+  onEdit: (() => void) | undefined
 }
 
 const PAST_ROW_CLASS =
@@ -38,9 +38,11 @@ export function HolidayList({ year, calendar, gaps, today, onOpen, onEdit }: Hol
       <section className="rounded-lg bg-white p-4 shadow-xs ring-1 ring-zinc-200">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">Ferien und schulfreie Tage {year}</h3>
-          <button type="button" className={EDIT_BUTTON_CLASS} onClick={onEdit}>
-            Anpassen
-          </button>
+          {onEdit && (
+            <button type="button" className={EDIT_BUTTON_CLASS} onClick={onEdit}>
+              Anpassen
+            </button>
+          )}
         </div>
         <ul className="mt-2 divide-y divide-zinc-100 text-sm">
           {schoolHolidays.map((period) => {
@@ -81,9 +83,11 @@ export function HolidayList({ year, calendar, gaps, today, onOpen, onEdit }: Hol
       <section className="rounded-lg bg-white p-4 shadow-xs ring-1 ring-zinc-200">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">Feiertage und Brückentage {year}</h3>
-          <button type="button" className={EDIT_BUTTON_CLASS} onClick={onEdit}>
-            Anpassen
-          </button>
+          {onEdit && (
+            <button type="button" className={EDIT_BUTTON_CLASS} onClick={onEdit}>
+              Anpassen
+            </button>
+          )}
         </div>
         <ul className="mt-2 divide-y divide-zinc-100 text-sm">
           {publicHolidays.map((period) => {

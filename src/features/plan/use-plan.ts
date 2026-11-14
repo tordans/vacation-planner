@@ -1,33 +1,23 @@
 import { getRouteApi } from '@tanstack/react-router'
-import { savedStampNow, today, yearOf } from '@/lib/dates'
-import { rememberLastPlan, type LastPlan } from './last-plan'
-import type { Plan } from './plan-schema'
-import { decodePlan, encodePlan } from './plan-url'
+import { today, yearOf } from '@/lib/dates'
+import type { LastPlan } from './last-plan'
+import { usePlanContext } from './plan-context'
 
 const routeApi = getRouteApi('/')
 
-/** The plan lives in the URL. Reading decodes it, committing writes it back with a new `saved`. */
+/**
+ * The plan, wherever it lives (see `PlanProvider`). `commit` updates the screen at once; in
+ * server mode it is saved a moment later. `readOnly` is true for the view role: every place that
+ * changes the plan checks this one flag.
+ */
 export function usePlan() {
-  const search = routeApi.useSearch()
-  const navigate = routeApi.useNavigate()
-  const plan = decodePlan(search.plan)
-  const year = search.year ?? yearOf(today())
+  const { server: _server, ...plan } = usePlanContext()
+  return plan
+}
 
-  /**
-   * `history: 'push'` for discrete steps (create, delete, drop) so the back button undoes them,
-   * `'replace'` for small follow-up edits such as typing a place name.
-   */
-  function commit(next: Plan, history: 'push' | 'replace' = 'push') {
-    const encoded = encodePlan(next)
-    const saved = savedStampNow()
-    rememberLastPlan({ plan: encoded, saved, year })
-    void navigate({
-      search: (previous) => ({ ...previous, plan: encoded, saved }),
-      replace: history === 'replace',
-    })
-  }
-
-  return { plan, commit, year, saved: search.saved, hasPlan: search.plan !== undefined }
+/** Server mode extras: loading, conflicts, notices, sign out. */
+export function useServerControls() {
+  return usePlanContext().server
 }
 
 export function useView() {

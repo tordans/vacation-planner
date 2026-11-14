@@ -49,6 +49,8 @@ type GanttEditorProps = {
   onCommit: (plan: Plan, history?: 'push' | 'replace') => void
   onDeselect: () => void
   onSelect: (selection: Selection) => void
+  /** View role: show the details of the selected bar, but nothing to change. */
+  readOnly: boolean
 }
 
 /** Details of the selected bar, shown below the chart. */
@@ -59,6 +61,7 @@ export function GanttEditor({
   onCommit,
   onDeselect,
   onSelect,
+  readOnly,
 }: GanttEditorProps) {
   const entry =
     selection?.type === 'family'
@@ -73,6 +76,63 @@ export function GanttEditor({
   const household = plan.households.find((candidate) => candidate.id === absenceHousehold)
   const absence = household?.absences.find((candidate) => candidate.id === selection?.id)
 
+  if (readOnly) {
+    if (entry) {
+      return (
+        <ReadOnlyDetails
+          key={entry.id}
+          title={entry.isIdea ? 'Idee für die Familie' : 'Zeitraum der Familie'}
+          range={entry}
+          facts={[
+            ['Art', STAY_STYLES[entry.kind].label],
+            ['Ort', entry.place],
+            [
+              'Betreuung',
+              entry.carers.length > 0
+                ? entry.carers.map((carer) => carerLabel(plan, carer)).join(', ')
+                : 'noch offen',
+            ],
+            ['Notiz', entry.note],
+          ]}
+          onDeselect={onDeselect}
+        />
+      )
+    }
+    if (leave) {
+      return (
+        <ReadOnlyDetails
+          key={leave.id}
+          title={`Eigener Urlaub ${parentLabel(plan, leave.parent)}`}
+          range={leave}
+          facts={[
+            ['Art', STAY_STYLES[leave.kind].label],
+            ['Ort', leave.place],
+            ['Notiz', leave.note],
+          ]}
+          onDeselect={onDeselect}
+        />
+      )
+    }
+    if (household && absence) {
+      return (
+        <ReadOnlyDetails
+          key={absence.id}
+          title={`${household.name || 'Haushalt'} nicht zu Hause`}
+          range={absence}
+          facts={[
+            ['Ort', absence.place],
+            ['Notiz', absence.note],
+          ]}
+          onDeselect={onDeselect}
+        />
+      )
+    }
+    return (
+      <p className="rounded-lg bg-white p-4 text-sm text-zinc-600 shadow-xs ring-1 ring-zinc-200">
+        Dies ist die Ansicht zum Nachschauen. Ein Klick auf einen Balken zeigt Ort und Notiz.
+      </p>
+    )
+  }
   if (entry) {
     return (
       <EntryEditor
@@ -120,7 +180,37 @@ export function GanttEditor({
   )
 }
 
-type EntryEditorProps = Omit<GanttEditorProps, 'selection'> & { entry: FamilyEntry }
+type ReadOnlyDetailsProps = {
+  title: string
+  range: DayRange
+  facts: Array<[label: string, value: string]>
+  onDeselect: () => void
+}
+
+function ReadOnlyDetails({ title, range, facts, onDeselect }: ReadOnlyDetailsProps) {
+  return (
+    <section className="space-y-3 rounded-lg bg-white p-4 shadow-xs ring-1 ring-zinc-200">
+      <EditorHeader
+        title={title}
+        range={range}
+        length={daysBetween(range.start, range.end) + 1}
+        onDeselect={onDeselect}
+      />
+      <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
+        {facts
+          .filter(([, value]) => value.trim() !== '')
+          .map(([label, value]) => (
+            <div key={label} className="contents">
+              <dt className="font-medium text-zinc-600">{label}</dt>
+              <dd className="whitespace-pre-wrap">{value}</dd>
+            </div>
+          ))}
+      </dl>
+    </section>
+  )
+}
+
+type EntryEditorProps = Omit<GanttEditorProps, 'selection' | 'readOnly'> & { entry: FamilyEntry }
 
 function EntryEditor({ plan, calendar, entry, onCommit, onDeselect, onSelect }: EntryEditorProps) {
   // An idea can only become fixed where no other fixed entry is.
@@ -270,7 +360,9 @@ function EntryEditor({ plan, calendar, entry, onCommit, onDeselect, onSelect }: 
   )
 }
 
-type LeaveEditorProps = Omit<GanttEditorProps, 'selection' | 'onSelect'> & { leave: PersonalLeave }
+type LeaveEditorProps = Omit<GanttEditorProps, 'selection' | 'onSelect' | 'readOnly'> & {
+  leave: PersonalLeave
+}
 
 function LeaveEditor({ plan, calendar, leave, onCommit, onDeselect }: LeaveEditorProps) {
   const length = daysBetween(leave.start, leave.end) + 1
@@ -334,7 +426,10 @@ function LeaveEditor({ plan, calendar, leave, onCommit, onDeselect }: LeaveEdito
   )
 }
 
-type AbsenceEditorProps = Omit<GanttEditorProps, 'selection' | 'calendar' | 'onSelect'> & {
+type AbsenceEditorProps = Omit<
+  GanttEditorProps,
+  'selection' | 'calendar' | 'onSelect' | 'readOnly'
+> & {
   household: Household
   absence: Absence
 }

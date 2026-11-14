@@ -3,11 +3,40 @@
 Plan a family's year: school holidays, public holidays and bridge days, where the family is, who
 takes care of the children, and how many vacation days each parent has left.
 
-**App:** <https://tordans.github.io/vacation-planner/> (UI in German: "Urlaubsplaner")
+**App:** <https://urlaub.ingsparks.de> (UI in German: "Urlaubsplaner")
 
-The whole plan lives in the URL. There is no server and no account; sharing the link shares the
-plan. The link also carries a readable `saved=` timestamp, shown in the tab title and under the
-app title, so an old bookmark is recognisable as old.
+One shared plan for the family, kept on our own webspace (all-inkl, Germany), plus a link-only mode
+that stores nothing on a server.
+
+## Two ways to use it
+
+**Server mode (the shared plan).** The family gets two links. Opening one stores its key in the
+browser (`localStorage`) and removes it from the address bar, so the bare address keeps working on
+that device.
+
+| Link                                         | Role | Can do                                                                                 |
+| -------------------------------------------- | ---- | -------------------------------------------------------------------------------------- |
+| `https://urlaub.ingsparks.de/#key=<editKey>` | edit | Everything. Changes show at once and are saved after about a second (`If-Match`).      |
+| `https://urlaub.ingsparks.de/#key=<viewKey>` | view | Look at everything including notes and leave accounts, change nothing ("Nur ansehen"). |
+
+The plan is loaded again when the tab gets focus and every 60 seconds while nothing is unsaved.
+If someone else saved first, the app shows their version with "Meine Änderung trotzdem speichern"
+(last save wins). Without a connection the change stays on screen, the header says "Nicht
+gespeichert – keine Verbindung", and saving is retried on the next change and on focus. A key the
+server no longer knows ("Dieser Link gilt nicht mehr") is removed and the app falls back to link
+mode. "Auf diesem Gerät abmelden" removes the key by hand.
+
+The edit role can also copy the plan as a link without a server ("Als Link ohne Server kopieren")
+and move a plan from a link or from "last plan" to the server ("Auf den Server übernehmen").
+
+**Link mode (no key).** The whole plan lives in the URL. There is no account and nothing is stored
+on a server; sharing the link shares a snapshot of the plan. The link also carries a readable
+`saved=` timestamp, shown in the tab title and under the app title, so an old bookmark is
+recognisable as old. A link with `plan=` opened on a device that holds a key stays in link mode and
+offers "Zum gemeinsamen Plan".
+
+Server API and deployment: [docs/release-plan.md](docs/release-plan.md) (contract) and
+[docs/deploy.md](docs/deploy.md) (KAS, secrets, first deploy, changing the keys).
 
 ## How it works
 
@@ -30,17 +59,20 @@ app title, so an old bookmark is recognisable as old.
 - **Holidays** come from [mehr-schulferien.de](https://www.mehr-schulferien.de) for the selected
   federal state (default Berlin), loaded once per year and cached in the browser.
   "Anpassen" lists them all so single dates can be corrected or removed, and adds the family's
-  own school-free days (training days, after-school care closed). These edits live in the link.
+  own school-free days (training days, after-school care closed). These edits are part of the plan.
 
 ## URL parameters
+
+`year`, `from`, `to` and `others` are used in both modes; `saved` and `plan` only in link mode (server
+mode keeps the plan on the server).
 
 | Param    | Example            | Purpose                                                 |
 | -------- | ------------------ | ------------------------------------------------------- |
 | `year`   | `2027`             | Selected year, defaults to the current year             |
 | `from`   | `2027-06-24`       | Detail view start; `from` and `to` open the detail view |
 | `to`     | `2027-08-21`       | Detail view end                                         |
-| `saved`  | `2026-10-06T14:32` | Last change of the plan, Europe/Berlin, plain text      |
-| `plan`   | `N4Ig…`            | The plan, LZ-compressed JSON (`src/features/plan`)      |
+| `saved`  | `2026-10-06T14:32` | Link mode: last change, Europe/Berlin, plain text       |
+| `plan`   | `N4Ig…`            | Link mode: the plan, LZ-compressed JSON                 |
 | `others` | `hide`             | Hides the other households' rows; absent means shown    |
 
 ## Development
@@ -66,8 +98,8 @@ bun run dev
 Stack: Vite 8, React 19 with React Compiler, TanStack Router (search params validated with Zod 4),
 TanStack Query, date-fns with `@date-fns/tz`, Tailwind CSS 4, Motion, Headless UI.
 
-Deployment: every push to `main` runs the checks and publishes to GitHub Pages
-(`.github/workflows/deploy-pages.yml`).
+Deployment: see [docs/deploy.md](docs/deploy.md). The app talks to `/api/plan` on the same origin;
+during development the Vite proxy forwards `/api` to the local PHP server.
 
 The product plan and its decisions are in [PLAN.md](PLAN.md).
 

@@ -1,0 +1,116 @@
+import { z } from 'zod'
+import type { WirePlan } from '@/features/plan/plan-schema'
+
+export class ApiError extends Error {
+  readonly status: number
+
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
+export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>
+
+/** `data` is the plan in wire format; whether it is understood is decided when decoding it. */
+const serverPlanSchema = z.object({
+  version: z.number().int().nonnegative(),
+  updatedAt: z.string().refine((value) => !Number.isNaN(Date.parse(value))),
+  data: z.record(z.string(), z.unknown()),
+})
+
+export type ServerPlan = z.infer<typeof serverPlanSchema>
+
+const ROLES = ['edit', 'view'] as const
+export type Role = (typeof ROLES)[number]
+
+const getPlanSchema = z.object({
+  role: z.enum(ROLES),
+  plan: serverPlanSchema.nullable(),
+})
+
+export type PlanResponse = z.infer<typeof getPlanSchema>
+
+const putPlanSchema = z.object({
+  version: z.number().int().nonnegative(),
+  updatedAt: serverPlanSchema.shape.updatedAt,
+})
+
+const conflictSchema = z.object({ plan: serverPlanSchema })
+
+export type PutPlanResult =
+  | { ok: true; version: number; updatedAt: string }
+  | { ok: false; conflict: ServerPlan }
+
+async function readJson<T>(response: Response, label: string, schema: z.ZodType<T>): Promise<T> {
+  let json: unknown
+  try {
+    json = await response.json()
+  } catch {
+    throw new ApiError(response.status, `${label}: response is not valid JSON`)
+  }
+  const result = schema.safeParse(json)
+  if (!result.success) throw new ApiError(response.status, `${label}: unexpected response shape`)
+  return result.data
+}
+
+function assertOk(response: Response, label: string) {
+  if (!response.ok) {
+    throw new ApiError(response.status, `${label} failed with HTTP ${response.status}`)
+  }
+}
+
+export function createApiClient({
+  key,
+  baseUrl = '',
+  fetch = (input, init) => globalThis.fetch(input, init),
+}: {
+  key: string
+  baseUrl?: string
+  fetch?: FetchLike
+}) {
+  const url = `${baseUrl.replace(/\/+$/, '')}/api/plan`
+
+  function call(method: string, headers: Record<string, string>, body?: unknown) {
+    return fetch(url, {
+      method,
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...headers,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+  }
+
+  return {
+    /** Throws `ApiError` (401: key unknown) or the network error; `plan` is `null` before the first save. */
+    async getPlan(): Promise<PlanResponse> {
+      const label = 'GET /api/plan'
+      const response = await call('GET', {})
+      assertOk(response, label)
+      return readJson(response, label, getPlanSchema)
+    },
+
+    /**
+     * `base: null` creates the plan (`If-None-Match: *`), a version updates it (`If-Match`).
+     * A stale version answers 409; that is a result, not an error. 403 (view key) and 401 throw.
+     */
+    async putPlan(data: WirePlan, base: number | null): Promise<PutPlanResult> {
+      const label = 'PUT /api/plan'
+      const response = await call(
+        'PUT',
+        base === null ? { 'If-None-Match': '*' } : { 'If-Match': `"${base}"` },
+        { data },
+      )
+      if (response.status === 409) {
+        const { plan } = await readJson(response, label, conflictSchema)
+        return { ok: false, conflict: plan }
+      }
+      assertOk(response, label)
+      return { ok: true, ...(await readJson(response, label, putPlanSchema)) }
+    },
+  }
+}

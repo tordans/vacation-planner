@@ -18,13 +18,15 @@ type YearOverviewProps = {
   year: number
   calendar: Calendar
   onOpenRange: (range: DayRange) => void
-  onEditCalendar: () => void
+  /** `undefined` for the view role: no "Anpassen" button. */
+  onEditCalendar: (() => void) | undefined
   /** Show the other households (information only); stored in the link as `others=hide`. */
   showOthers: boolean
   onShowOthers: (show: boolean) => void
   /** School holidays per federal state code, for the other households. */
   householdHolidays: Map<string, Period[]>
-  onEditHouseholds: () => void
+  /** `undefined` for the view role: no editing buttons. */
+  onEditHouseholds: (() => void) | undefined
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, month) => month)

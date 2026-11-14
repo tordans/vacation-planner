@@ -54,69 +54,86 @@ export function InfoFooter() {
       <h2 className="text-base font-semibold">Gut zu wissen</h2>
       <div className="grid items-start gap-3 lg:grid-cols-2">
         <div className="space-y-3">
-          <Topic id={INFO_TOPICS.keeping} title="Wie sichere ich meinen Plan?">
+          <Topic id={INFO_TOPICS.keeping} title="Wo liegt der Plan, und wie sichere ich ihn?">
             <p>
-              Der Plan steckt vollständig im Link in der Adresszeile. Mit jeder Änderung ändert sich
-              dieser Link. Es gibt kein Konto und keinen Speichern-Knopf:{' '}
-              <strong className="font-semibold text-zinc-900">
-                Wer den aktuellen Link hat, hat den aktuellen Plan.
-              </strong>
+              Mit dem Zugangslink liegt der Plan gemeinsam auf dem Server. Er wird eine Sekunde nach
+              jeder Änderung automatisch gespeichert, es gibt keinen Speichern-Knopf. Oben steht,
+              wann zuletzt gespeichert wurde. Wer den Link zum Bearbeiten hat, sieht immer den
+              aktuellen Stand; die Seite schaut beim Zurückkehren und jede Minute nach Änderungen
+              anderer.
             </p>
             <p>
-              Ein gespeicherter Link ist deshalb immer eine Momentaufnahme. Ein Lesezeichen, eine
-              E-Mail oder eine Textnachricht zeigen den Stand von dem Moment, in dem sie angelegt
-              wurden, und aktualisieren sich nicht von selbst. Nach jeder Planungsrunde müsstest du
-              sie neu anlegen.
+              Ändern zwei Menschen gleichzeitig, gewinnt, wer zuletzt speichert. Die Seite zeigt
+              dann den neuen Stand und fragt, ob die eigene Änderung trotzdem gespeichert werden
+              soll. Ohne Verbindung bleibt die Änderung auf dem Bildschirm und wird gespeichert,
+              sobald es wieder klappt.
             </p>
             <p>
-              Besser eignet sich ein Ort, an dem du den Link einfach überschreiben kannst: eine
-              Notiz in einer Notizen-App oder ein geteiltes Dokument, in das alle Beteiligten
-              schauen. Nach dem Planen auf „Link kopieren“ klicken und den alten Link dort ersetzen.
+              <strong className="font-semibold text-zinc-900">Ohne Server</strong> geht es weiter:
+              Ein Plan, der nur im Link steckt, ändert mit jeder Änderung seinen Link. Wer den
+              aktuellen Link hat, hat den aktuellen Plan. Im Link-Modus ist ein gespeicherter Link
+              deshalb immer eine Momentaufnahme: Ein Lesezeichen, eine E-Mail oder eine
+              Textnachricht zeigen den Stand von dem Moment, in dem sie angelegt wurden. Unter dem
+              Titel und im Namen des Browser-Tabs steht, von wann der geöffnete Stand ist; dieselbe
+              Angabe steht lesbar im Link (
+              <code className="rounded-sm bg-zinc-100 px-1 py-0.5 text-xs">saved=…</code>).
             </p>
             <p>
-              Unter dem Titel und im Namen des Browser-Tabs steht, von wann der geöffnete Stand ist.
-              Dieselbe Angabe steht lesbar im Link (
-              <code className="rounded-sm bg-zinc-100 px-1 py-0.5 text-xs">saved=…</code>). So
-              erkennst du einen veralteten Link, bevor du darin weiterplanst.
-            </p>
-            <p>
-              Mit dem Zurück-Knopf des Browsers nimmst du die letzten Änderungen schrittweise
-              zurück.
+              Mit dem Zurück-Knopf des Browsers nimmst du im Link-Modus die letzten Änderungen
+              schrittweise zurück. Den gemeinsamen Plan als Momentaufnahme nimmst du über
+              „Gemeinsamer Plan“ und „Als Link ohne Server kopieren“ mit.
             </p>
           </Topic>
 
           <Topic id={INFO_TOPICS.storage} title="Welche Daten werden wo gespeichert?">
             <p>
-              <strong className="font-semibold text-zinc-900">Im Link:</strong> der gesamte Plan,
-              also Bundesland, Namen, Arbeitstage und Urlaubstage der Eltern, alle Zeiträume mit
-              Ort, Notiz und Betreuung, deine Anpassungen an Ferien und Feiertagen sowie andere
-              Haushalte mit ihren Abwesenheiten. Der Plan wird an keinen Server geschickt und dort
-              nicht gespeichert.
+              <strong className="font-semibold text-zinc-900">Auf dem Server:</strong> der
+              gemeinsame Plan, also Bundesland, Namen, Arbeitstage und Urlaubstage der Eltern, alle
+              Zeiträume mit Ort, Notiz und Betreuung, Anpassungen an Ferien und Feiertagen sowie
+              andere Haushalte mit ihren Abwesenheiten. Er liegt auf unserem eigenen Webspace bei
+              all-inkl.com in Deutschland, unverschlüsselt in einer Datenbank. Wer den Server und
+              die Datenbank verwaltet, kann ihn lesen; wie bei allem auf eigenem Webspace.
             </p>
             <p>
-              <strong className="font-semibold text-zinc-900">In deinem Browser:</strong> zwei
+              <strong className="font-semibold text-zinc-900">Wer den Plan sehen kann:</strong>{' '}
+              jeder, der einen der beiden Links hat. Der Link zum Ansehen zeigt alles, auch Notizen
+              und Urlaubskonten, und kann nichts ändern. Der Link zum Bearbeiten kann auch ändern.
+              Teile die Links nur mit Menschen, die den Plan sehen sollen. Der Server speichert von
+              den Links nur einen Fingerabdruck, nicht den Link selbst.
+            </p>
+            <p>
+              <strong className="font-semibold text-zinc-900">Links austauschen:</strong> Ein Link
+              wird ersetzt, indem wir seinen Schlüssel auf dem Server austauschen und die Seite neu
+              ausliefern. Danach gilt der alte Link nicht mehr; die Seite meldet dann „Dieser Link
+              gilt nicht mehr“.
+            </p>
+            <p>
+              <strong className="font-semibold text-zinc-900">Im Link (Link-Modus):</strong> Ohne
+              Zugangslink steckt der gesamte Plan stattdessen im Link in der Adresszeile und wird
+              nicht auf dem Server gespeichert. Die Adresse selbst erreicht den Server aber beim
+              Aufruf der Seite, wie jede Adresse. Wer so einen Link bekommt, kann alles darin lesen
+              und daraus einen eigenen, geänderten Link machen; dein Link ändert sich dadurch nicht.
+            </p>
+            <p>
+              <strong className="font-semibold text-zinc-900">In deinem Browser:</strong> drei
               Dinge, damit die Seite bequemer ist. Erstens die geladenen Ferien und Feiertage je
               Bundesland und Jahr, damit sie nicht bei jedem Besuch neu abgefragt werden. Zweitens
-              der zuletzt in diesem Browser bearbeitete Link, damit die Seite ihn dir beim nächsten
-              leeren Aufruf wieder anbieten kann. Beides bleibt auf deinem Gerät und lässt sich über
-              „Websitedaten löschen“ im Browser entfernen.
-            </p>
-            <p>
-              <strong className="font-semibold text-zinc-900">Wer den Link bekommt</strong>, kann
-              alles darin lesen und daraus einen eigenen, geänderten Link machen. Dein Link ändert
-              sich dadurch nicht. Teile ihn also nur mit Menschen, die den Plan sehen sollen. Keine
+              der zuletzt im Link-Modus bearbeitete Link, damit die Seite ihn dir beim nächsten
+              leeren Aufruf wieder anbieten kann. Drittens der Zugangsschlüssel, nachdem du den
+              Zugangslink geöffnet hast; so funktioniert auch die Adresse ohne Schlüssel, etwa vom
+              Startbildschirm. „Auf diesem Gerät abmelden“ entfernt ihn wieder. Alles bleibt auf
+              deinem Gerät und lässt sich über „Websitedaten löschen“ im Browser entfernen. Keine
               Cookies, keine Statistik, keine Werbung.
             </p>
           </Topic>
 
           <Topic title="Welche externen Dienste werden genutzt?">
             <p>
-              <strong className="font-semibold text-zinc-900">GitHub Pages</strong> liefert diese
-              Seite aus. Dabei verarbeitet GitHub technische Zugriffsdaten wie deine IP-Adresse. Der
-              Plan gehört nicht dazu: Er steht hinter dem Fragezeichen im Link und wird nur in
-              deinem Browser ausgewertet. Siehe{' '}
-              <ExternalLink href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement">
-                Datenschutzerklärung von GitHub
+              <strong className="font-semibold text-zinc-900">all-inkl.com</strong> liefert diese
+              Seite aus und speichert den gemeinsamen Plan, auf unserem Webspace in Deutschland.
+              Dabei verarbeitet der Anbieter technische Zugriffsdaten wie deine IP-Adresse. Siehe{' '}
+              <ExternalLink href="https://all-inkl.com/datenschutzinformationen">
+                Datenschutzinformationen von all-inkl.com
               </ExternalLink>
               .
             </p>
