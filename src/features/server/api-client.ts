@@ -25,6 +25,8 @@ export type ServerPlan = z.infer<typeof serverPlanSchema>
 
 const ROLES = ['edit', 'view'] as const
 export type Role = (typeof ROLES)[number]
+/** The links an edit key can renew: the two plan links and the calendar link. */
+export type LinkKind = Role | 'calendar'
 
 const getPlanSchema = z.object({
   role: z.enum(ROLES),
@@ -158,10 +160,10 @@ export function createApiClient({
     },
 
     /**
-     * `POST /api/plan/keys` (edit key only): replaces the view or edit key and returns the new one,
-     * shown once. The old link stops working at once. Throws `ApiError` (401, 403).
+     * `POST /api/plan/keys` (edit key only): replaces the view, edit or calendar key and returns the
+     * new one, shown once. The old link stops working at once. Throws `ApiError` (401, 403).
      */
-    async renewKey(which: Role): Promise<string> {
+    async renewKey(which: LinkKind): Promise<string> {
       const label = 'POST /api/plan/keys'
       const response = await fetch(`${url}/keys`, {
         method: 'POST',

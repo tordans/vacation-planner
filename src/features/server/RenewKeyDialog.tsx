@@ -1,18 +1,22 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { buttonClass, primaryButtonClass } from '@/components/ui/classes'
 import { Modal } from '@/components/ui/Modal'
-import { createApiClient, type Role } from './api-client'
+import { createApiClient, type LinkKind } from './api-client'
 import { storeKey } from './key-store'
 import { LinkCopy } from './LinkCopy'
 import { planQueryKey } from './use-server-plan'
 
-const COPY: Record<Role, { title: string; confirm: string; warning: string; hint: string }> = {
+const COPY: Record<
+  LinkKind,
+  { title: string; confirm: string; warning: string; hint: string; label: string }
+> = {
   view: {
     title: 'Ansicht-Link erneuern?',
     confirm: 'Ansicht-Link erneuern',
     warning:
       'Der bisherige Link zum Ansehen funktioniert danach nicht mehr. Alle, die den Plan nur ansehen, brauchen den neuen Link.',
     hint: 'Schick ihn an alle, die den Plan ansehen sollen.',
+    label: 'Neuer Link zum Ansehen',
   },
   edit: {
     title: 'Bearbeiten-Link erneuern?',
@@ -20,12 +24,21 @@ const COPY: Record<Role, { title: string; confirm: string; warning: string; hint
     warning:
       'Der bisherige Link zum Bearbeiten funktioniert danach nicht mehr, auch auf anderen Geräten. Alle, die mitbearbeiten, brauchen den neuen Link. Auf diesem Gerät wird der neue Link sofort verwendet.',
     hint: 'Speichere ihn sicher, zum Beispiel in einem Passwortmanager, und gib ihn an alle weiter, die mitbearbeiten.',
+    label: 'Neuer Link zum Bearbeiten',
+  },
+  calendar: {
+    title: 'Kalender-Link erstellen?',
+    confirm: 'Kalender-Link erstellen',
+    warning:
+      'Mit dem geheimen Kalender-Link zeigen Google Kalender, Apple Kalender oder Outlook eure festen Zeiträume, den eigenen Urlaub und eigene schulfreie Tage an, mit dem Vorsatz „Urlaubsplan:“. Wer den Link hat, kann diese Termine lesen, aber nichts ändern. Gab es schon einen Kalender-Link, funktioniert er danach nicht mehr.',
+    hint: 'In Google Kalender: „Weitere Kalender“ → „Per URL“ → Link einfügen. Google lädt den Kalender nur etwa alle 12 bis 24 Stunden neu.',
+    label: 'Kalender-Link (iCal)',
   },
 }
 
 type RenewKeyDialogProps = {
   /** Which link is being renewed; `null` closes the dialog. */
-  which: Role | null
+  which: LinkKind | null
   /** The edit key of this device (only the edit role can renew). */
   planKey: string
   onClose: () => void
@@ -35,7 +48,7 @@ type RenewKeyDialogProps = {
 export function RenewKeyDialog({ which, planKey, onClose }: RenewKeyDialogProps) {
   const queryClient = useQueryClient()
   const mutation = useMutation({
-    mutationFn: (kind: Role) => createApiClient({ key: planKey }).renewKey(kind),
+    mutationFn: (kind: LinkKind) => createApiClient({ key: planKey }).renewKey(kind),
     onSuccess: (newKey, kind) => {
       if (kind !== 'edit') return
       // Carry the loaded plan over to the new key, so the screen stays and this dialog keeps open.
@@ -63,10 +76,7 @@ export function RenewKeyDialog({ which, planKey, onClose }: RenewKeyDialogProps)
             Den neuen Link siehst du <strong className="font-semibold">nur jetzt</strong>.{' '}
             {text.hint}
           </p>
-          <LinkCopy
-            label={shown === 'edit' ? 'Neuer Link zum Bearbeiten' : 'Neuer Link zum Ansehen'}
-            planKey={renewed}
-          />
+          <LinkCopy label={text.label} planKey={renewed} isCalendar={shown === 'calendar'} />
           <div className="flex justify-end">
             <button type="button" className={primaryButtonClass} onClick={close}>
               Fertig

@@ -3,19 +3,25 @@ import { KeyIcon } from '@heroicons/react/20/solid'
 import { useState } from 'react'
 import { buttonClass } from '@/components/ui/classes'
 import { usePlan, useServerControls } from '@/features/plan/use-plan'
-import type { Role } from './api-client'
+import type { LinkKind } from './api-client'
 import { useKeyState } from './key-store'
 import { RenewKeyDialog } from './RenewKeyDialog'
 
 const menuButtonClass =
   'block w-full rounded-md px-3 py-2 text-left text-sm font-medium hover:bg-zinc-50 focus-visible:outline-2 focus-visible:outline-sky-600 disabled:cursor-not-allowed disabled:text-zinc-400 disabled:hover:bg-transparent'
 
+const LABELS: Record<LinkKind, string> = {
+  view: 'Ansicht-Link erneuern',
+  edit: 'Bearbeiten-Link erneuern',
+  calendar: 'Kalender-Link (iCal) erstellen oder erneuern',
+}
+
 /** Header menu of the shared plan: what this access allows, renewing links, leaving this device. */
 export function AccessMenu() {
   const { role, saveState } = usePlan()
   const server = useServerControls()
   const { key } = useKeyState()
-  const [renewing, setRenewing] = useState<Role | null>(null)
+  const [renewing, setRenewing] = useState<LinkKind | null>(null)
   const canRenew = role === 'edit' && key !== null
   // Renewing the edit link switches this device to the new key; unsaved edits would be lost.
   const waitingForSave = saveState !== 'saved'
@@ -40,7 +46,7 @@ export function AccessMenu() {
               </p>
               {canRenew && (
                 <>
-                  {(['view', 'edit'] as const).map((which) => (
+                  {(['view', 'edit', 'calendar'] as const).map((which) => (
                     <button
                       key={which}
                       type="button"
@@ -56,7 +62,7 @@ export function AccessMenu() {
                         setRenewing(which)
                       }}
                     >
-                      {which === 'view' ? 'Ansicht-Link erneuern' : 'Bearbeiten-Link erneuern'}
+                      {LABELS[which]}
                     </button>
                   ))}
                   <p className="px-3 pb-2 text-xs text-zinc-600">

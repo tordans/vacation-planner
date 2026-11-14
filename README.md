@@ -28,6 +28,8 @@ family is, who takes care of the children, and how many leave days each parent h
   poll lives in the link fragment (`#d=…`), which is never sent to any server. From a plan you can
   start a poll ("Abstimmung" in the header) and take its families (as households) and Chancen (as
   ideas) back in.
+- **Calendar link** (iCal) for Google, Apple or Outlook calendars, and **iCal import** of school
+  dates as own school-free days.
 - **Holidays** come from [mehr-schulferien.de](https://www.mehr-schulferien.de) for the chosen
   federal state. "Anpassen" corrects single dates and adds your own school-free days.
 
@@ -49,6 +51,15 @@ family is, who takes care of the children, and how many leave days each parent h
    families (load their school holidays or enter ranges by hand) and send the link. The others add
    their times and send the new link back. Everything is stored in the link only (after the `#`,
    which no server receives); the poll's name is in the address, and every change gives a new link.
+
+6. **See it in your calendar.** "Kalender-Link (iCal) erstellen oder erneuern" in the same menu
+   gives a secret link for Google Calendar ("Weitere Kalender" → "Per URL"), Apple Calendar or
+   Outlook. It shows the fixed periods, each parent's own leave and your own school-free days,
+   titled "Urlaubsplan: …", with a link back into the app (without any key). Read-only; renewing it
+   invalidates the old one.
+7. **Import school dates.** In "Anpassen" (holidays), drop an iCal file (.ics), e.g. a school
+   calendar, and pick which events become school-free days. Events that are already holidays or
+   public holidays start unchecked.
 
 Several people can edit at the same time; if two saves collide, the later one is offered the chance
 to overwrite ("Meine Änderung trotzdem speichern"). Without a connection the change stays on screen

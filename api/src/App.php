@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VacationPlanner\Api;
 
 use Closure;
+use VacationPlanner\Api\Handler\CalendarHandler;
 use VacationPlanner\Api\Handler\KeysHandler;
 use VacationPlanner\Api\Handler\PlanHandler;
 use VacationPlanner\Api\Handler\PlansHandler;
@@ -62,6 +63,15 @@ final class App
     private function dispatch(Request $request): Response
     {
         $path = $request->path === '/' ? '/' : rtrim($request->path, '/');
+
+        // The calendar feed carries its key in the path, because calendar apps cannot send headers.
+        if (preg_match('#^/api/calendar/([A-Za-z0-9_-]{43})\.ics$#', $path, $m) === 1) {
+            if ($request->method !== 'GET' && $request->method !== 'HEAD') {
+                throw new HttpException(405, 'method_not_allowed', [], ['Allow' => 'GET, HEAD']);
+            }
+
+            return (new CalendarHandler($this->db(), $this->clock))->feed($request, $m[1]);
+        }
         $routes = array_filter($this->routes(), static fn (array $r): bool => $r['path'] === $path);
         if ($routes === []) {
             throw new HttpException(404, 'not_found');

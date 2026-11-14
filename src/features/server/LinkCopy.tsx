@@ -1,15 +1,24 @@
 import { CheckIcon, ClipboardDocumentIcon } from '@heroicons/react/20/solid'
 import { useId, useState } from 'react'
 import { buttonClass } from '@/components/ui/classes'
-import { linkForKey } from './key-hash'
+import { calendarLinkForKey, linkForKey } from './key-hash'
 
 type CopyState = 'idle' | 'copied' | 'failed'
 
 /** A link that is shown once: readonly field, so it can also be selected by hand, and a copy button. */
-export function LinkCopy({ label, planKey }: { label: string; planKey: string }) {
+export function LinkCopy({
+  label,
+  planKey,
+  isCalendar = false,
+}: {
+  label: string
+  planKey: string
+  /** The calendar feed link instead of the plan link. */
+  isCalendar?: boolean
+}) {
   const id = useId()
   const [copy, setCopy] = useState<CopyState>('idle')
-  const link = linkForKey(planKey, window.location.origin)
+  const link = (isCalendar ? calendarLinkForKey : linkForKey)(planKey, window.location.origin)
 
   async function copyLink() {
     try {

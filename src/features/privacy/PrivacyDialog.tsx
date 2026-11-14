@@ -46,6 +46,15 @@ function PrivacyDialog({ open, onClose }: { open: boolean; onClose: () => void }
             selbst speichert der Server nur als Fingerabdruck (SHA-256).
           </p>
         </Section>
+        <Section title="Kalender-Link">
+          <p>
+            Den geheimen Kalender-Link (iCal) gibt es nur, wenn jemand mit dem Link zum Bearbeiten
+            ihn erstellt. Er liefert feste Zeiträume, eigenen Urlaub und eigene schulfreie Tage als
+            Termine und kann nichts ändern. Wer ihn in Google, Apple oder Outlook abonniert, gibt
+            diesem Anbieter den Link und die Termine. Sein Schlüssel steht in der Adresse und kann
+            daher in den Zugriffsprotokollen des Hosters stehen.
+          </p>
+        </Section>
         <Section title="Abstimmungen">
           <ul className="list-disc space-y-1 pl-5">
             <li>

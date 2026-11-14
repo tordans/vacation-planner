@@ -46,7 +46,7 @@ mit PHP und einer MySQL-Datenbank.
 | Was                                                                                                                                                                                                                                                           | Form                                                                                                                                                 | Lesbar für                                                                                                                   |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | Der Plan: Bundesland, Namen der Eltern und anderer Haushalte (optional, frei wählbar), Arbeitstage und Urlaubstage, Zeiträume mit Orten, Notizen und Betreuung, Anpassungen an Ferien und Feiertagen, eigene schulfreie Tage, Abwesenheiten anderer Haushalte | **Klartext** (JSON) in der Datenbank. Keine Ende-zu-Ende-Verschlüsselung                                                                             | wer den Link zum Bearbeiten oder zum Ansehen hat; der Betreiber; der Hoster                                                  |
-| Link-Schlüssel (Bearbeiten und Ansehen)                                                                                                                                                                                                                       | nur als SHA-256-Fingerabdruck; der Schlüssel selbst wird nur einmal beim Anlegen oder Erneuern angezeigt                                             | – (nicht umkehrbar)                                                                                                          |
+| Link-Schlüssel (Bearbeiten, Ansehen und Kalender-Link)                                                                                                                                                                                                        | nur als SHA-256-Fingerabdruck; der Schlüssel selbst wird nur einmal beim Anlegen oder Erneuern angezeigt                                             | – (nicht umkehrbar)                                                                                                          |
 | Einladungswort                                                                                                                                                                                                                                                | nur als SHA-256-Fingerabdruck in der Konfiguration                                                                                                   | –                                                                                                                            |
 | Fehlversuche mit dem Einladungswort                                                                                                                                                                                                                           | IP-Adresse gemischt mit einem täglich wechselnden Salz und gehasht (keine Klar-IP), mit Zeitpunkt; Zeilen älter als etwa eine Stunde werden gelöscht | Betreiber, Hoster                                                                                                            |
 | Fehlerprotokoll der API                                                                                                                                                                                                                                       | kurze Fehlermeldungen ohne Inhalte der Anfrage                                                                                                       | Betreiber                                                                                                                    |
@@ -57,7 +57,21 @@ kann, ohne Passphrasen zu verwalten. Trag deshalb nur ein, was du auch einem Web
 anvertrauen würdest. Vollständige Namen und genaue Adressen sind nicht nötig; die App kommt mit
 Vornamen oder Kürzeln aus.
 
-Pro Plan gibt es zwei Links, aber keine Nutzerkonten und keine Zuordnung zu Personen. Die Server-
+## Kalender-Link (iCal)
+
+Wer bearbeiten darf, kann im Menü „Gemeinsamer Plan“ einen geheimen Kalender-Link erstellen. Er
+liefert die festen Zeiträume (mit Ort, Betreuung und Notiz), den eigenen Urlaub der Eltern und die
+eigenen schulfreien Tage als Kalendertermine; Ideen und andere Haushalte nicht. Der Server speichert
+nur den SHA-256-Fingerabdruck des Links; ein neuer Link macht den alten sofort ungültig.
+
+Anders als bei den Plan-Links steht der Schlüssel hier im Pfad der Adresse (`/api/calendar/….ics`),
+weil Kalender-Apps keinen anderen Weg kennen. Er kann deshalb in den Zugriffsprotokollen des Hosters
+stehen. Wer den Kalender-Link in Google Kalender, Apple Kalender oder Outlook abonniert, gibt diesem
+Anbieter den Link und die Termine darin; ab dann gelten für diese Kopie dessen Datenschutzregeln. Der
+Kalender-Link kann nur lesen und öffnet den Plan nicht. Die Links in den Terminen führen zur App,
+ohne Schlüssel.
+
+Pro Plan gibt es zwei Links (und auf Wunsch den Kalender-Link), aber keine Nutzerkonten und keine Zuordnung zu Personen. Die Server-
 Datenbank enthält keine E-Mail-Adressen und keine Klar-IP-Adressen.
 
 ## Abstimmungen

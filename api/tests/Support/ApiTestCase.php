@@ -42,7 +42,7 @@ abstract class ApiTestCase extends TestCase
         $dsn = getenv('TEST_DB_DSN');
         if (is_string($dsn) && $dsn !== '') {
             $db = new Db(new \PDO($dsn, getenv('TEST_DB_USER') ?: null, getenv('TEST_DB_PASSWORD') ?: null, [\PDO::ATTR_EMULATE_PREPARES => false]));
-            foreach (['plans', 'invite_attempts', 'migrations'] as $table) {
+            foreach (['calendar_feeds', 'plans', 'invite_attempts', 'migrations'] as $table) {
                 $db->pdo->exec('DROP TABLE IF EXISTS ' . $table);
             }
         } else {

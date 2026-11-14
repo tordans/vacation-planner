@@ -5,20 +5,21 @@ The API stores several plans, one per family. Each plan has its own edit link an
 plans can only be created with an invite word. This file is the API contract and covers what is
 specific to the PHP code.
 
-The server never interprets the plan. It checks that `data` is a JSON object, stores it as JSON
-text and returns it unchanged.
+The server never interprets the plan, except to render the calendar feed. It checks that `data` is
+a JSON object, stores it as JSON text and returns it unchanged.
 
 ## Endpoints
 
 JSON in and out. Every response has `Cache-Control: no-store`. Errors are `{ "error": "<code>" }`.
 
-| Method + path         | Auth         | Result                                                                                                                                                                                                                                                                                                                        |
-| --------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET /api/health`     | none         | `200 { ok: true, commit }` (works without a database)                                                                                                                                                                                                                                                                         |
-| `POST /api/plans`     | invite word  | body `{ invite }`. `201 { editKey, viewKey }`: both keys, shown **once**. `403 invalid_invite` for a wrong, missing or empty word. `429 too_many_attempts` (+ `Retry-After: 3600`) after 10 failed attempts per IP hash and hour. `503 plans_full` at 5 new plans per 24 hours or 100 plans in total                          |
-| `GET /api/plan`       | edit or view | `200 { role, plan: { version, updatedAt, data } \| null }` + `ETag: "<version>"`; `plan` is `null` before the first save                                                                                                                                                                                                      |
-| `PUT /api/plan`       | edit         | body `{ data }`. `If-Match: "<version>"` updates, `If-None-Match: *` creates. `200 { version, updatedAt }` + `ETag`. `409 { error: "conflict", plan }` when the version is stale or a plan exists already (`plan` is `null` when `If-Match` is sent but there is no plan). `428` without precondition. `403` for the view key |
-| `POST /api/plan/keys` | edit         | body `{ which: "view" \| "edit" }`. Replaces that key of the plan: `200 { key }` (the new key, shown **once**). The old key stops working at once. `403` for the view key, `422 invalid_request` for any other `which`. After renewing the edit key the caller must switch to the returned key                                |
+| Method + path                 | Auth         | Result                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/health`             | none         | `200 { ok: true, commit }` (works without a database)                                                                                                                                                                                                                                                                                                                                    |
+| `POST /api/plans`             | invite word  | body `{ invite }`. `201 { editKey, viewKey }`: both keys, shown **once**. `403 invalid_invite` for a wrong, missing or empty word. `429 too_many_attempts` (+ `Retry-After: 3600`) after 10 failed attempts per IP hash and hour. `503 plans_full` at 5 new plans per 24 hours or 100 plans in total                                                                                     |
+| `GET /api/plan`               | edit or view | `200 { role, plan: { version, updatedAt, data } \| null }` + `ETag: "<version>"`; `plan` is `null` before the first save                                                                                                                                                                                                                                                                 |
+| `PUT /api/plan`               | edit         | body `{ data }`. `If-Match: "<version>"` updates, `If-None-Match: *` creates. `200 { version, updatedAt }` + `ETag`. `409 { error: "conflict", plan }` when the version is stale or a plan exists already (`plan` is `null` when `If-Match` is sent but there is no plan). `428` without precondition. `403` for the view key                                                            |
+| `POST /api/plan/keys`         | edit         | body `{ which: "view" \| "edit" \| "calendar" }`. Replaces that key of the plan (the calendar key is created on first use): `200 { key }` (the new key, shown **once**). The old key stops working at once. `403` for the view key, `422 invalid_request` for any other `which`. After renewing the edit key the caller must switch to the returned key                                  |
+| `GET /api/calendar/<key>.ics` | key in path  | The plan as an iCalendar feed (`text/calendar`): fixed family periods, each parent's own leave, own school-free days, all-day, titled `Urlaubsplan: …`, each with a deep link into the app (`/?year=…&from=…&to=…`, never a key). Ideas and other households are left out. `404` for an unknown key, `405` for other methods. The calendar key opens nothing else (`401` on `/api/plan`) |
 
 Database migrations are not an endpoint: the API applies pending `migrations/*.sql` itself before
 the first request that needs the database (see [Migrations](#migrations)). `GET /api/health` never
@@ -43,6 +44,11 @@ Other rules:
   used, never `X-Forwarded-For`. Plan count limits are checked after the word, so a stranger
   learns nothing about them. The counts are not atomic; two requests at the same instant may
   exceed a limit by one.
+- **Calendar feed:** calendar apps cannot send headers, so its key is in the path (and may show up
+  in the host's access logs). It is stored like the other keys, only as SHA-256 in
+  `calendar_feeds`, at most one per plan. `src/CalendarFeed.php` is the only code that reads the
+  plan; it skips malformed items instead of failing. Event UIDs are a hash of plan id, type, dates
+  and title, so a changed period shows up as a new event. The deep links use the request's `Host`.
 - **Malformed JSON:** an empty or unparseable body is `400 { "error": "invalid_json" }`.
 - **Body over 64 KiB:** `413`. Unknown path: `404`. Known path, wrong method: `405` with `Allow`.
 - **Plan body:** must be a JSON object with a `data` object, otherwise `422 invalid_plan`.

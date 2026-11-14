@@ -2,7 +2,7 @@ import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/re
 import { ArrowUturnLeftIcon, PlusIcon, TrashIcon } from '@heroicons/react/20/solid'
 import { useState } from 'react'
 import { DraftInput } from '@/components/ui/DraftInput'
-import type { Period, YearPeriods } from '@/features/holidays/periods'
+import { applyCalendarEdits, type Period, type YearPeriods } from '@/features/holidays/periods'
 import {
   addCustomDay,
   adjustHoliday,
@@ -13,6 +13,7 @@ import {
 import type { Plan } from '@/features/plan/plan-schema'
 import { cn } from '@/lib/cn'
 import { formatDayShort, isIsoDay } from '@/lib/dates'
+import { IcsImport } from './IcsImport'
 
 type CalendarDialogProps = {
   open: boolean
@@ -92,7 +93,8 @@ export function CalendarDialog({
               <h3 className="text-sm font-semibold">Eigene schulfreie Tage</h3>
               <p className="text-xs text-zinc-600">
                 Zum Beispiel Studientag, Hort oder Kita geschlossen. Sie zählen wie Ferien: Das Kind
-                ist zu Hause und der Tag braucht eine Betreuung.
+                ist zu Hause und der Tag braucht eine Betreuung. Termine aus einer iCal-Datei (etwa
+                vom Schulkalender) kannst du laden und auswählen.
               </p>
               {customDays.map(({ day, index }) => (
                 <PeriodRow
@@ -111,6 +113,12 @@ export function CalendarDialog({
                   }
                 />
               ))}
+              <IcsImport
+                year={year}
+                calendar={applyCalendarEdits(source, plan)}
+                customDays={plan.customDays}
+                onImport={(days) => onCommit(days.reduce(addCustomDay, plan))}
+              />
               <AddCustomDay
                 year={year}
                 draft={draft}

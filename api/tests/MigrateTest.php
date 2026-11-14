@@ -35,7 +35,8 @@ final class MigrateTest extends ApiTestCase
 
         self::assertTrue($this->tableExists('plans'));
         self::assertTrue($this->tableExists('invite_attempts'));
-        self::assertSame(['001_init.sql'], array_column($this->db->all('SELECT name FROM migrations'), 'name'));
+        self::assertTrue($this->tableExists('calendar_feeds'));
+        self::assertSame(['001_init.sql', '002_calendar_feeds.sql'], array_column($this->db->all('SELECT name FROM migrations'), 'name'));
     }
 
     public function testLaterRequestsApplyNothing(): void

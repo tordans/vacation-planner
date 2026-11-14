@@ -25,6 +25,14 @@ export function removeKeyFromHash(hash: string): string {
   return rest ? `#${rest}` : ''
 }
 
+/**
+ * The secret calendar link (iCal feed) for calendar apps. Unlike the plan links its key is in the
+ * path, because calendar apps cannot send headers; it only reads the feed and opens nothing else.
+ */
+export function calendarLinkForKey(key: string, origin: string): string {
+  return `${origin.replace(/\/+$/, '')}/api/calendar/${key}.ics`
+}
+
 /** The link to share: the app's address with the key in the fragment. */
 export function linkForKey(key: string, origin: string): string {
   return `${origin.replace(/\/+$/, '')}/#key=${key}`

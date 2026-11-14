@@ -12,7 +12,10 @@ use VacationPlanner\Api\Keys;
 use VacationPlanner\Api\Request;
 use VacationPlanner\Api\Response;
 
-/** POST /api/plan/keys: replaces the view or the edit key of the plan. The old key stops working at once. */
+/**
+ * POST /api/plan/keys: replaces the view key, the edit key or the calendar link key of the plan
+ * (the calendar key is created on first use). The old key stops working at once.
+ */
 final class KeysHandler
 {
     public function __construct(private readonly Db $db)
@@ -30,10 +33,18 @@ final class KeysHandler
         $column = match ($which) {
             'view' => 'view_key_sha256',
             'edit' => 'edit_key_sha256',
+            'calendar' => null,
             default => throw new HttpException(422, 'invalid_request'),
         };
 
         $key = Keys::generate();
+        if ($column === null) {
+            // The calendar link: made on first request, replaced on every later one.
+            $this->db->run('DELETE FROM calendar_feeds WHERE plan_id = ?', [$access->planId]);
+            $this->db->run('INSERT INTO calendar_feeds (plan_id, key_sha256) VALUES (?, ?)', [$access->planId, Keys::hash($key)]);
+
+            return Response::json(200, ['key' => $key]);
+        }
         $this->db->run("UPDATE plans SET $column = ? WHERE id = ?", [Keys::hash($key), $access->planId]);
 
         return Response::json(200, ['key' => $key]);
