@@ -2,8 +2,7 @@ import { useMutation } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { buttonClass, inputClass, linkClass } from '@/components/ui/classes'
 import { FEDERAL_STATES, federalStateByCode } from '@/features/holidays/federal-states'
-import { fetchYearPeriods } from '@/features/holidays/fetch-periods'
-import { holidayRanges } from './holiday-ranges'
+import { fetchHolidayRanges } from './fetch-holiday-ranges'
 import type { RangeInput } from './poll-schema'
 
 const DEFAULT_FEDERAL_STATE = 'BE'
@@ -17,8 +16,6 @@ type LoadHolidaysProps = {
   onLoad: (federalState: string, ranges: RangeInput[]) => void
 }
 
-type Request = { code: string; year: number; withPublicHolidays: boolean }
-
 /**
  * School holidays (optionally public holidays and bridge days) of a federal state and year
  * from mehr-schulferien.de, through the same cache the planner uses.
@@ -29,13 +26,7 @@ export function LoadHolidays({ federalState, defaultYear, onLoad }: LoadHolidays
   const [year, setYear] = useState(defaultYear)
   const [withPublicHolidays, setWithPublicHolidays] = useState(false)
   const [empty, setEmpty] = useState(false)
-  const mutation = useMutation({
-    mutationFn: async ({ code, year, withPublicHolidays }: Request) =>
-      holidayRanges(
-        await fetchYearPeriods(federalStateByCode(code).slug, year),
-        withPublicHolidays,
-      ),
-  })
+  const mutation = useMutation({ mutationFn: fetchHolidayRanges })
 
   function load() {
     setEmpty(false)

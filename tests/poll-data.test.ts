@@ -8,6 +8,7 @@ import {
   removeFamily,
   removeRange,
   renameFamily,
+  setFederalState,
   updateRange,
 } from '@/features/poll/poll-data'
 import { EMPTY_POLL, type Poll } from '@/features/poll/poll-schema'
@@ -142,6 +143,20 @@ describe('holidays', () => {
     expect(once.sections[1]).toMatchObject({ federalState: 'BE' })
     expect(once.sections[1]?.ranges).toHaveLength(1)
     expect(twice.sections[1]?.ranges).toHaveLength(1)
+  })
+
+  it('applies holidays to the named family only, and to nothing for an unknown family', () => {
+    const ranges = holidayRanges(periods, false)
+    const applied = addHolidays(sample(), 'Familie B', 'BE', ranges)
+    expect(applied.sections[0]).toEqual(sample().sections[0])
+    expect(applied.sections[1]?.ranges.map((range) => range.name)).toEqual(['Sommerferien'])
+    expect(addHolidays(sample(), 'Unbekannt', 'BE', ranges)).toEqual(sample())
+  })
+
+  it('sets the federal state without any holidays', () => {
+    const next = setFederalState(sample(), 'Familie B', 'HH')
+    expect(next.sections[1]).toMatchObject({ name: 'Familie B', federalState: 'HH', ranges: [] })
+    expect(setFederalState(sample(), 'Unbekannt', 'HH')).toEqual(sample())
   })
 })
 

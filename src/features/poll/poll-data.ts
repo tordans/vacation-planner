@@ -134,6 +134,11 @@ export function removeRange(poll: Poll, sectionName: string, id: string): Poll {
   }
 }
 
+/** Remembers the federal state of a family for its holiday loader. Unchanged for an unknown family. */
+export function setFederalState(poll: Poll, familyName: string, federalState: string): Poll {
+  return withSection(poll, familyName, (section) => ({ ...section, federalState }))
+}
+
 /** Adds loaded holidays to a family and remembers its federal state. Skips what is already there. */
 export function addHolidays(
   poll: Poll,
@@ -141,7 +146,7 @@ export function addHolidays(
   federalState: string,
   holidays: RangeInput[],
 ): Poll {
-  let next = withSection(poll, familyName, (section) => ({ ...section, federalState }))
+  let next = setFederalState(poll, familyName, federalState)
   for (const holiday of holidays) {
     const existing = findSection(next, familyName)?.ranges ?? []
     const known = existing.some(

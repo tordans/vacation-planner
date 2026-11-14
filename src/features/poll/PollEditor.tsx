@@ -29,7 +29,7 @@ export function PollEditor({ poll, onChange }: PollEditorProps) {
         />
       ))}
       <div className="rounded-lg bg-white p-4 shadow-xs ring-1 ring-zinc-200">
-        <AddFamilyForm poll={poll} onChange={onChange} />
+        <AddFamilyForm poll={poll} defaultYear={defaultYear} onChange={onChange} />
       </div>
       <ChancenCard poll={poll} onChange={onChange} />
     </section>
