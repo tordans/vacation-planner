@@ -9,11 +9,9 @@ import {
   formatDayShort,
   formatSavedCompact,
   formatSavedFull,
-  formatSavedRelative,
   formatSavedShort,
   isIsoDay,
   isoWeekday,
-  isSavedStamp,
   savedStampFromIso,
   savedStampNow,
   today,
@@ -80,15 +78,11 @@ describe('saved stamp', () => {
 
   it('is written in Berlin local time with minute precision', () => {
     expect(savedStampNow(now)).toBe('2026-10-06T14:32')
-    expect(isSavedStamp('2026-10-06T14:32')).toBe(true)
-    expect(isSavedStamp('2026-10-06 14:32')).toBe(false)
   })
 
-  it('is shown absolute and relative', () => {
+  it('is shown in full and compact form', () => {
     expect(formatSavedCompact('2026-10-06T14:32')).toBe('06.10.2026 14:32')
     expect(formatSavedFull('2026-10-06T14:32')).toBe('Di, 06.10.2026, 14:32 Uhr')
-    expect(formatSavedRelative('2026-10-06T14:32', now)).toBe('gerade eben')
-    expect(formatSavedRelative('2026-09-15T09:00', now)).toBe('vor 3 Wochen')
   })
 })
 

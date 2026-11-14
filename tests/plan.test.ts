@@ -19,16 +19,14 @@ import {
   updateAbsence,
   updateEntry,
 } from '@/features/plan/plan-actions'
-import { emptyPlan } from '@/features/plan/plan-schema'
-import { decodePlan, encodePlan } from '@/features/plan/plan-url'
-import { berlin2027, familyPlan } from './fixtures'
+import { berlin2027, familyPlan, viaServer } from './fixtures'
 
 function planWithEntry(start: string, end: string, patch: Parameters<typeof updateEntry>[2]) {
   const added = addEntry(familyPlan(), { start, end })
   return { plan: updateEntry(added.plan, added.id, patch), id: added.id }
 }
 
-describe('plan url', () => {
+describe('wire format', () => {
   it('round-trips a plan', () => {
     let { plan } = planWithEntry('2027-07-12', '2027-07-30', {
       kind: 'away',
@@ -45,23 +43,7 @@ describe('plan url', () => {
       { kind: 'public', start: '2027-03-08', end: '2027-03-08' },
       { name: 'Frauentag', start: '2027-03-09', end: '2027-03-09' },
     )
-    expect(decodePlan(encodePlan(plan))).toEqual(plan)
-  })
-
-  it('falls back to an empty plan for broken links', () => {
-    expect(decodePlan(undefined)).toEqual(emptyPlan())
-    expect(decodePlan('not-a-plan')).toEqual(emptyPlan())
-    expect(decodePlan(encodePlan(emptyPlan()).slice(0, 10))).toEqual(emptyPlan())
-  })
-
-  it('stays short enough to share', () => {
-    let plan = familyPlan()
-    for (let month = 1; month <= 12; month++) {
-      const mm = String(month).padStart(2, '0')
-      const added = addEntry(plan, { start: `2027-${mm}-05`, end: `2027-${mm}-15` })
-      plan = updateEntry(added.plan, added.id, { place: `Ort ${month}`, carers: ['mother'] })
-    }
-    expect(encodePlan(plan).length).toBeLessThan(700)
+    expect(viaServer(plan)).toEqual(plan)
   })
 })
 
@@ -208,16 +190,16 @@ describe('plan actions', () => {
 })
 
 describe('other households', () => {
-  it('round-trip through the link with their absences', () => {
+  it('round-trip through the server with their absences', () => {
     let plan = familyPlan()
     const grandparents = addHousehold(plan, { name: 'Oma & Opa', federalState: 'BY' })
     plan = grandparents.plan
     plan = addHousehold(plan, { name: 'Cousinen', federalState: null }).plan
     const absence = addAbsence(plan, grandparents.id, { start: '2027-08-02', end: '2027-08-20' })
     plan = updateAbsence(absence.plan, absence.id, { place: 'Kur' })
-    const decoded = decodePlan(encodePlan(plan))
+    const decoded = viaServer(plan)
     expect(decoded).toEqual(plan)
-    expect(decoded.households[0]?.absences[0]).toMatchObject({ id: 'h0a0', place: 'Kur' })
+    expect(decoded?.households[0]?.absences[0]).toMatchObject({ id: 'h0a0', place: 'Kur' })
   })
 
   it('keep ids positional when one is removed', () => {
@@ -252,7 +234,7 @@ describe('ideas', () => {
     plan = updateEntry(first.plan, first.id, { place: 'Oma & Opa', carers: ['grandparents'] })
     const second = addEntry(plan, { start: '2027-07-19', end: '2027-07-30' }, true)
     plan = updateEntry(second.plan, second.id, { place: 'Andere Großeltern', carers: ['father'] })
-    expect(decodePlan(encodePlan(plan))).toEqual(plan)
+    expect(viaServer(plan)).toEqual(plan)
 
     expect(blockersFor(plan, { row: 'family' }, first.id)).toEqual([])
     expect(blockersFor(plan, { row: 'family' }, fixedId)).toEqual([])
@@ -264,8 +246,8 @@ describe('ideas', () => {
     expect(coverageGaps(decided, 2027, berlin2027, '2027-01-01').has('2027-07-20')).toBe(false)
   })
 
-  it('keep older links without the idea flag as fixed entries', () => {
+  it('keep stored entries without the idea flag as fixed entries', () => {
     const { plan } = planWithEntry('2027-07-12', '2027-07-16', {})
-    expect(decodePlan(encodePlan(plan)).entries[0]?.isIdea).toBe(false)
+    expect(viaServer(plan)?.entries[0]?.isIdea).toBe(false)
   })
 })

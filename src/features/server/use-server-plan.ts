@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useEffectEvent, useReducer, useState } from 'react'
 import { emptyPlan, type Plan } from '@/features/plan/plan-schema'
-import { decodeWirePlan, toWire } from '@/features/plan/plan-url'
+import { decodeWirePlan, toWire } from '@/features/plan/plan-wire'
 import { savedStampFromIso } from '@/lib/dates'
 import {
   ApiError,
@@ -22,8 +22,6 @@ import {
 
 /** Edits are saved this long after the last change. */
 const SAVE_DELAY_MS = 1000
-/** Look for changes of others this often while nothing is unsaved (and when the tab gets focus). */
-const POLL_INTERVAL_MS = 60_000
 
 function isStatus(error: unknown, status: number) {
   return error instanceof ApiError && error.status === status
@@ -32,9 +30,9 @@ function isStatus(error: unknown, status: number) {
 /**
  * The shared plan: loaded and refreshed through TanStack Query, edits shown at once and saved
  * with a delay. The rules for saving, failing and conflicts live in `sync-state.ts`.
- * `key === null` switches everything off (link mode).
+ * There is no polling: the plan is fetched again when the tab gets focus while nothing is unsaved.
  */
-export function useServerPlan(key: string | null) {
+export function useServerPlan(key: string) {
   const queryClient = useQueryClient()
   const [sync, dispatch] = useReducer(syncReducer, initialSyncState)
   // Another link opened in this tab (e.g. view after edit): unsaved edits and conflicts belong to
@@ -49,9 +47,7 @@ export function useServerPlan(key: string | null) {
 
   const query = useQuery({
     queryKey,
-    enabled: key !== null,
     queryFn: async () => {
-      if (key === null) throw new Error('No key')
       try {
         return await createApiClient({ key }).getPlan()
       } catch (error) {
@@ -60,7 +56,6 @@ export function useServerPlan(key: string | null) {
       }
     },
     retry: (count, error) => !isStatus(error, 401) && count < 2,
-    refetchInterval: unsaved ? false : POLL_INTERVAL_MS,
     refetchOnWindowFocus: !unsaved,
   })
 
@@ -88,7 +83,6 @@ export function useServerPlan(key: string | null) {
 
   /** Never throws: every failure becomes state. */
   async function save(next: Plan, base: number | null) {
-    if (key === null) return
     dispatch({ type: 'save-started' })
     try {
       const result = await createApiClient({ key }).putPlan(toWire(next), base)
@@ -144,26 +138,6 @@ export function useServerPlan(key: string | null) {
     void save(sync.conflict, serverPlan.version)
   }
 
-  /**
-   * Replace the shared plan with `next` right away (used for "Auf den Server übernehmen"); last
-   * save wins, so a 409 is answered with one more try on top of the newer version.
-   */
-  async function replaceWith(next: Plan): Promise<boolean> {
-    if (key === null) return false
-    const client = createApiClient({ key })
-    try {
-      let result = await client.putPlan(toWire(next), serverPlan?.version ?? null)
-      if (!result.ok) result = await client.putPlan(toWire(next), result.conflict.version)
-      if (!result.ok) return false
-      rememberSaved(next, result)
-      dispatch({ type: 'discard' })
-      return true
-    } catch (error) {
-      if (isStatus(error, 401)) clearKey({ revoked: true })
-      return false
-    }
-  }
-
   return {
     load: query.data
       ? ('ready' as const)
@@ -181,6 +155,5 @@ export function useServerPlan(key: string | null) {
     hasConflict: sync.conflict !== null,
     overwriteWithMine,
     dismissConflict: () => dispatch({ type: 'dismiss-conflict' }),
-    replaceWith,
   }
 }

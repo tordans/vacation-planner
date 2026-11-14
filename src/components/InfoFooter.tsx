@@ -3,8 +3,7 @@ import type { ReactNode } from 'react'
 
 /** Anchors other parts of the page link to. */
 export const INFO_TOPICS = {
-  storage: 'info-daten',
-  keeping: 'info-link-sichern',
+  keeping: 'info-plan-ablage',
 } as const
 
 /** Opens a topic in the footer and scrolls to it. */
@@ -54,13 +53,12 @@ export function InfoFooter() {
       <h2 className="text-base font-semibold">Gut zu wissen</h2>
       <div className="grid items-start gap-3 lg:grid-cols-2">
         <div className="space-y-3">
-          <Topic id={INFO_TOPICS.keeping} title="Wo liegt der Plan, und wie sichere ich ihn?">
+          <Topic id={INFO_TOPICS.keeping} title="Wo liegt der Plan?">
             <p>
-              Mit dem Zugangslink liegt der Plan gemeinsam auf dem Server. Er wird eine Sekunde nach
-              jeder Änderung automatisch gespeichert, es gibt keinen Speichern-Knopf. Oben steht,
-              wann zuletzt gespeichert wurde. Wer den Link zum Bearbeiten hat, sieht immer den
-              aktuellen Stand; die Seite schaut beim Zurückkehren und jede Minute nach Änderungen
-              anderer.
+              Der Plan liegt gemeinsam auf dem Server. Er wird eine Sekunde nach jeder Änderung
+              automatisch gespeichert, es gibt keinen Speichern-Knopf. Oben steht, wann zuletzt
+              gespeichert wurde. Wer den Link zum Bearbeiten hat, sieht immer den aktuellen Stand;
+              die Seite schaut nach Änderungen anderer, sobald du zu ihr zurückkehrst.
             </p>
             <p>
               Ändern zwei Menschen gleichzeitig, gewinnt, wer zuletzt speichert. Die Seite zeigt
@@ -68,24 +66,9 @@ export function InfoFooter() {
               soll. Ohne Verbindung bleibt die Änderung auf dem Bildschirm und wird gespeichert,
               sobald es wieder klappt.
             </p>
-            <p>
-              <strong className="font-semibold text-zinc-900">Ohne Server</strong> geht es weiter:
-              Ein Plan, der nur im Link steckt, ändert mit jeder Änderung seinen Link. Wer den
-              aktuellen Link hat, hat den aktuellen Plan. Im Link-Modus ist ein gespeicherter Link
-              deshalb immer eine Momentaufnahme: Ein Lesezeichen, eine E-Mail oder eine
-              Textnachricht zeigen den Stand von dem Moment, in dem sie angelegt wurden. Unter dem
-              Titel und im Namen des Browser-Tabs steht, von wann der geöffnete Stand ist; dieselbe
-              Angabe steht lesbar im Link (
-              <code className="rounded-sm bg-zinc-100 px-1 py-0.5 text-xs">saved=…</code>).
-            </p>
-            <p>
-              Mit dem Zurück-Knopf des Browsers nimmst du im Link-Modus die letzten Änderungen
-              schrittweise zurück. Den gemeinsamen Plan als Momentaufnahme nimmst du über
-              „Gemeinsamer Plan“ und „Als Link ohne Server kopieren“ mit.
-            </p>
           </Topic>
 
-          <Topic id={INFO_TOPICS.storage} title="Welche Daten werden wo gespeichert?">
+          <Topic title="Welche Daten werden wo gespeichert?">
             <p>
               <strong className="font-semibold text-zinc-900">Auf dem Server:</strong> der
               gemeinsame Plan, also Bundesland, Namen, Arbeitstage und Urlaubstage der Eltern, alle
@@ -108,22 +91,13 @@ export function InfoFooter() {
               gilt nicht mehr“.
             </p>
             <p>
-              <strong className="font-semibold text-zinc-900">Im Link (Link-Modus):</strong> Ohne
-              Zugangslink steckt der gesamte Plan stattdessen im Link in der Adresszeile und wird
-              nicht auf dem Server gespeichert. Die Adresse selbst erreicht den Server aber beim
-              Aufruf der Seite, wie jede Adresse. Wer so einen Link bekommt, kann alles darin lesen
-              und daraus einen eigenen, geänderten Link machen; dein Link ändert sich dadurch nicht.
-            </p>
-            <p>
-              <strong className="font-semibold text-zinc-900">In deinem Browser:</strong> drei
+              <strong className="font-semibold text-zinc-900">In deinem Browser:</strong> zwei
               Dinge, damit die Seite bequemer ist. Erstens die geladenen Ferien und Feiertage je
               Bundesland und Jahr, damit sie nicht bei jedem Besuch neu abgefragt werden. Zweitens
-              der zuletzt im Link-Modus bearbeitete Link, damit die Seite ihn dir beim nächsten
-              leeren Aufruf wieder anbieten kann. Drittens der Zugangsschlüssel, nachdem du den
-              Zugangslink geöffnet hast; so funktioniert auch die Adresse ohne Schlüssel, etwa vom
-              Startbildschirm. „Auf diesem Gerät abmelden“ entfernt ihn wieder. Alles bleibt auf
-              deinem Gerät und lässt sich über „Websitedaten löschen“ im Browser entfernen. Keine
-              Cookies, keine Statistik, keine Werbung.
+              der Zugangsschlüssel, nachdem du den Zugangslink geöffnet hast; so funktioniert auch
+              die Adresse ohne Schlüssel, etwa vom Startbildschirm. „Auf diesem Gerät abmelden“
+              entfernt ihn wieder. Alles bleibt auf deinem Gerät und lässt sich über „Websitedaten
+              löschen“ im Browser entfernen. Keine Cookies, keine Statistik, keine Werbung.
             </p>
           </Topic>
 
@@ -222,9 +196,8 @@ export function InfoFooter() {
             <p>
               Das ist nur Information: Andere Haushalte brauchen keine Betreuung, kosten keine
               Urlaubstage und erzeugen keine roten Punkte. Über den Schalter „Andere Haushalte“
-              lassen sie sich ausblenden; der Link trägt dann{' '}
-              <code className="rounded-sm bg-zinc-100 px-1 py-0.5 text-xs">others=hide</code>. Wie
-              alles andere steckt auch diese Angabe im Link.
+              lassen sie sich ausblenden; die Adresse trägt dann{' '}
+              <code className="rounded-sm bg-zinc-100 px-1 py-0.5 text-xs">others=hide</code>.
             </p>
           </Topic>
 

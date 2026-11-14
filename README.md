@@ -5,35 +5,30 @@ takes care of the children, and how many vacation days each parent has left.
 
 **App:** <https://urlaub.ingsparks.de> (UI in German: "Urlaubsplaner")
 
-One shared plan for the family, kept on our own webspace (all-inkl, Germany), plus a link-only mode
-that stores nothing on a server.
+One shared plan for the family, kept on our own webspace (all-inkl, Germany). The plan lives only on
+the server; the address bar holds no plan data.
 
-## Two ways to use it
+## Two links
 
-**Server mode (the shared plan).** The family gets two links. Opening one stores its key in the
-browser (`localStorage`) and removes it from the address bar, so the bare address keeps working on
-that device.
+The family gets two links. Opening one stores its key in the browser (`localStorage`) and removes it
+from the address bar, so the bare address keeps working on that device.
 
 | Link                                         | Role | Can do                                                                                 |
 | -------------------------------------------- | ---- | -------------------------------------------------------------------------------------- |
 | `https://urlaub.ingsparks.de/#key=<editKey>` | edit | Everything. Changes show at once and are saved after about a second (`If-Match`).      |
 | `https://urlaub.ingsparks.de/#key=<viewKey>` | view | Look at everything including notes and leave accounts, change nothing ("Nur ansehen"). |
 
-The plan is loaded again when the tab gets focus and every 60 seconds while nothing is unsaved.
-If someone else saved first, the app shows their version with "Meine Änderung trotzdem speichern"
-(last save wins). Without a connection the change stays on screen, the header says "Nicht
-gespeichert – keine Verbindung", and saving is retried on the next change and on focus. A key the
-server no longer knows ("Dieser Link gilt nicht mehr") is removed and the app falls back to link
-mode. "Auf diesem Gerät abmelden" removes the key by hand.
+Without a stored key the app shows a small screen instead of the planner ("Du brauchst den Link, den
+du bekommen hast.") and makes no API calls. A key the server no longer knows (401) is removed and
+the same screen adds "Dieser Link gilt nicht mehr". "Auf diesem Gerät abmelden" removes the key by
+hand.
 
-The edit role can also copy the plan as a link without a server ("Als Link ohne Server kopieren")
-and move a plan from a link or from "last plan" to the server ("Auf den Server übernehmen").
-
-**Link mode (no key).** The whole plan lives in the URL. There is no account and nothing is stored
-on a server; sharing the link shares a snapshot of the plan. The link also carries a readable
-`saved=` timestamp, shown in the tab title and under the app title, so an old bookmark is
-recognisable as old. A link with `plan=` opened on a device that holds a key stays in link mode and
-offers "Zum gemeinsamen Plan".
+The plan is loaded again when the tab gets focus while nothing is unsaved, so a tab left open for
+weeks shows the current plan when you come back; there is no polling. If someone else saved first,
+the app shows their version with "Meine Änderung trotzdem speichern" (last save wins). Without a
+connection the change stays on screen, the header says "Nicht gespeichert – keine Verbindung", and
+saving is retried on the next change and on focus. The tab title and "Gespeichert …" come from the
+server's `updatedAt`.
 
 Server API and deployment: [docs/release-plan.md](docs/release-plan.md) (contract) and
 [docs/deploy.md](docs/deploy.md) (KAS, secrets, first deploy, changing the keys).
@@ -63,17 +58,14 @@ Server API and deployment: [docs/release-plan.md](docs/release-plan.md) (contrac
 
 ## URL parameters
 
-`year`, `from`, `to` and `others` are used in both modes; `saved` and `plan` only in link mode (server
-mode keeps the plan on the server).
+The address only holds the view; the plan itself is never part of it.
 
-| Param    | Example            | Purpose                                                 |
-| -------- | ------------------ | ------------------------------------------------------- |
-| `year`   | `2027`             | Selected year, defaults to the current year             |
-| `from`   | `2027-06-24`       | Detail view start; `from` and `to` open the detail view |
-| `to`     | `2027-08-21`       | Detail view end                                         |
-| `saved`  | `2026-10-06T14:32` | Link mode: last change, Europe/Berlin, plain text       |
-| `plan`   | `N4Ig…`            | Link mode: the plan, LZ-compressed JSON                 |
-| `others` | `hide`             | Hides the other households' rows; absent means shown    |
+| Param    | Example      | Purpose                                                 |
+| -------- | ------------ | ------------------------------------------------------- |
+| `year`   | `2027`       | Selected year, defaults to the current year             |
+| `from`   | `2027-06-24` | Detail view start; `from` and `to` open the detail view |
+| `to`     | `2027-08-21` | Detail view end                                         |
+| `others` | `hide`       | Hides the other households' rows; absent means shown    |
 
 ## Development
 
@@ -93,7 +85,7 @@ bun run dev
 | `format` / `format-check` | oxfmt (mutating / read-only)                             |
 | `test-run`                | Vitest                                                   |
 | `check`                   | Local verify: type-check, lint, format, tests, knip-warn |
-| `check-ci`                | Read-only verify used by CI                              |
+| `check-ci`                | Read-only verify, run by the pre-push hook               |
 
 Stack: Vite 8, React 19 with React Compiler, TanStack Router (search params validated with Zod 4),
 TanStack Query, date-fns with `@date-fns/tz`, Tailwind CSS 4, Motion, Headless UI.

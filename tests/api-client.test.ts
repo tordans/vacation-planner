@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toWire } from '@/features/plan/plan-url'
+import { toWire } from '@/features/plan/plan-wire'
 import { ApiError, createApiClient, type FetchLike } from '@/features/server/api-client'
 import { familyPlan } from './fixtures'
 

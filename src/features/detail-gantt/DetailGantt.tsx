@@ -136,7 +136,7 @@ type DetailGanttProps = {
   year: number
   calendar: Calendar
   range: DayRange
-  onCommit: (plan: Plan, history?: 'push' | 'replace') => void
+  onCommit: (plan: Plan) => void
   onChangeRange: (range: DayRange, history?: 'push' | 'replace') => void
   onClose: () => void
   /** Show the other households (information only). */
@@ -330,7 +330,7 @@ export function DetailGantt({
     )
     if (next.start === bar.start && next.end === bar.end) return
     setSelection({ type, id })
-    onCommit(updateOn(plan, row, id, next), 'replace')
+    onCommit(updateOn(plan, row, id, next))
   }
 
   function shown(row: EditableRow, id: string, bar: DayRange) {

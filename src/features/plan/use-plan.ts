@@ -1,21 +1,20 @@
 import { getRouteApi } from '@tanstack/react-router'
 import { today, yearOf } from '@/lib/dates'
-import type { LastPlan } from './last-plan'
 import { usePlanContext } from './plan-context'
 
 const routeApi = getRouteApi('/')
 
 /**
- * The plan, wherever it lives (see `PlanProvider`). `commit` updates the screen at once; in
- * server mode it is saved a moment later. `readOnly` is true for the view role: every place that
- * changes the plan checks this one flag.
+ * The shared plan (see `PlanProvider`). `commit` updates the screen at once and saves a moment
+ * later. `readOnly` is true for the view role: every place that changes the plan checks this one
+ * flag.
  */
 export function usePlan() {
   const { server: _server, ...plan } = usePlanContext()
   return plan
 }
 
-/** Server mode extras: loading, conflicts, notices, sign out. */
+/** Loading, conflicts, sign out. */
 export function useServerControls() {
   return usePlanContext().server
 }
@@ -46,10 +45,6 @@ export function useView() {
     void navigate({ search: (previous) => ({ ...previous, from: undefined, to: undefined }) })
   }
 
-  function openPlan(lastPlan: LastPlan) {
-    void navigate({ search: { year: lastPlan.year, saved: lastPlan.saved, plan: lastPlan.plan } })
-  }
-
   const showOthers = search.others !== 'hide'
 
   function setShowOthers(show: boolean) {
@@ -59,5 +54,5 @@ export function useView() {
     })
   }
 
-  return { year, range, setYear, openRange, closeRange, openPlan, showOthers, setShowOthers }
+  return { year, range, setYear, openRange, closeRange, showOthers, setShowOthers }
 }

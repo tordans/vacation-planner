@@ -21,7 +21,7 @@ type HouseholdsDialogProps = {
   onClose: () => void
   plan: Plan
   year: number
-  onCommit: (plan: Plan, history?: 'push' | 'replace') => void
+  onCommit: (plan: Plan) => void
 }
 
 const fieldClass =
@@ -90,8 +90,8 @@ export function HouseholdsDialog({ open, onClose, plan, year, onCommit }: Househ
               <p className="mt-1 text-sm text-zinc-600">
                 Diese Haushalte werden neben deinem Plan als Information angezeigt, zum Beispiel
                 wenn die Großeltern Schulferien haben oder die Cousinen verreist sind. Sie brauchen
-                keine Betreuung und kosten keine Urlaubstage. Alle Angaben werden im Link
-                gespeichert.
+                keine Betreuung und kosten keine Urlaubstage. Alle Angaben werden wie der Plan
+                gemeinsam gespeichert.
               </p>
             </div>
 
@@ -144,7 +144,7 @@ type HouseholdSectionProps = {
   household: Household
   plan: Plan
   year: number
-  onCommit: (plan: Plan, history?: 'push' | 'replace') => void
+  onCommit: (plan: Plan) => void
   draft: AbsenceDraft
   onDraft: (draft: AbsenceDraft) => void
   onRemove: () => void
@@ -172,7 +172,7 @@ function HouseholdSection({
           placeholder="z. B. Oma & Opa"
           value={household.name}
           maxLength={60}
-          onCommit={(name) => onCommit(updateHousehold(plan, household.id, { name }), 'replace')}
+          onCommit={(name) => onCommit(updateHousehold(plan, household.id, { name }))}
         />
         <select
           aria-label="Bundesland"
@@ -181,7 +181,6 @@ function HouseholdSection({
           onChange={(event) =>
             onCommit(
               updateHousehold(plan, household.id, { federalState: event.target.value || null }),
-              'push',
             )
           }
         >
@@ -212,7 +211,7 @@ function HouseholdSection({
           <AbsenceRow
             key={absence.id}
             absence={absence}
-            onChange={(patch) => onCommit(updateAbsence(plan, absence.id, patch), 'replace')}
+            onChange={(patch) => onCommit(updateAbsence(plan, absence.id, patch))}
             onRemove={() => onCommit(removeAbsence(plan, absence.id))}
           />
         ))}

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { isIsoDay, isSavedStamp } from '@/lib/dates'
+import { isIsoDay } from '@/lib/dates'
 
 export const appSearchSchema = z.object({
   /** Selected year; defaults to the current year. */
@@ -9,8 +9,4 @@ export const appSearchSchema = z.object({
   to: z.string().refine(isIsoDay).optional().catch(undefined),
   /** `hide` hides the other households in the views; shown by default. */
   others: z.literal('hide').optional().catch(undefined),
-  /** Last change of the plan as plain text, so the age of a link is visible in the URL. */
-  saved: z.string().refine(isSavedStamp).optional().catch(undefined),
-  /** The plan itself, LZ-compressed. See `plan-url.ts`. */
-  plan: z.coerce.string().optional().catch(undefined),
 })

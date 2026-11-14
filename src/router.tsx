@@ -23,9 +23,7 @@ const rootRoute = createRootRoute({
     return (
       <main className="mx-auto grid min-h-svh max-w-[40rem] place-content-center gap-2 p-6">
         <h1 className="text-xl font-semibold">Da ist etwas schiefgelaufen</h1>
-        <p className="text-zinc-600">
-          Bitte die Seite neu laden. Der Plan steckt weiterhin im Link.
-        </p>
+        <p className="text-zinc-600">Bitte die Seite neu laden.</p>
       </main>
     )
   },

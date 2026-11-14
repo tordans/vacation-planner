@@ -143,8 +143,8 @@ export function emptyPlan(): Plan {
 }
 
 /**
- * Compact wire format stored in the `plan` URL param. Short keys and tuples keep links short.
- * Bump `v` and add a migration in `plan-url.ts` when this shape changes.
+ * Compact wire format the server stores as is. Short keys and tuples keep the stored plan small.
+ * Bump `v` and add a migration in `plan-wire.ts` when this shape changes.
  */
 const isoDaySchema = z.string().refine(isIsoDay)
 const kindSchema = z.union([z.literal(0), z.literal(1)])

@@ -4,7 +4,6 @@ import { FEDERAL_STATES } from '@/features/holidays/federal-states'
 import { updateParent } from '@/features/plan/plan-actions'
 import { leaveBudget, PARENT_LABELS, PARENT_ROLES, type Plan } from '@/features/plan/plan-schema'
 import { CARER_STYLES } from '@/features/plan/styles'
-import { usePlan } from '@/features/plan/use-plan'
 import { cn } from '@/lib/cn'
 import { WEEKDAY_LABELS } from '@/lib/dates'
 
@@ -13,11 +12,10 @@ type SettingsDialogProps = {
   onClose: () => void
   plan: Plan
   year: number
-  onCommit: (plan: Plan, history?: 'push' | 'replace') => void
+  onCommit: (plan: Plan) => void
 }
 
 export function SettingsDialog({ open, onClose, plan, year, onCommit }: SettingsDialogProps) {
-  const { mode } = usePlan()
   return (
     <Dialog open={open} onClose={onClose} className="relative z-40">
       <DialogBackdrop
@@ -33,9 +31,7 @@ export function SettingsDialog({ open, onClose, plan, year, onCommit }: Settings
             <div>
               <DialogTitle className="text-lg font-semibold">Einstellungen</DialogTitle>
               <p className="mt-1 text-sm text-zinc-600">
-                {mode === 'server'
-                  ? 'Alles hier wird wie der Plan selbst gemeinsam gespeichert.'
-                  : 'Alles hier wird wie der Plan selbst im Link gespeichert.'}
+                Alles hier wird wie der Plan selbst gemeinsam gespeichert.
               </p>
             </div>
 
@@ -70,7 +66,7 @@ export function SettingsDialog({ open, onClose, plan, year, onCommit }: Settings
                         value={parent.name}
                         placeholder={PARENT_LABELS[role]}
                         maxLength={30}
-                        onCommit={(name) => onCommit(updateParent(plan, role, { name }), 'replace')}
+                        onCommit={(name) => onCommit(updateParent(plan, role, { name }))}
                       />
                     </label>
                     <div>
@@ -97,7 +93,6 @@ export function SettingsDialog({ open, onClose, plan, year, onCommit }: Settings
                                       ? parent.workingDays.filter((day) => day !== weekday)
                                       : [...parent.workingDays, weekday],
                                   }),
-                                  'replace',
                                 )
                               }
                             >
@@ -124,7 +119,6 @@ export function SettingsDialog({ open, onClose, plan, year, onCommit }: Settings
                             updateParent(plan, role, {
                               leaveDaysByYear: { ...parent.leaveDaysByYear, [year]: days },
                             }),
-                            'replace',
                           )
                         }}
                       />

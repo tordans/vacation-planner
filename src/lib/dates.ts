@@ -141,14 +141,8 @@ export function formatDayRelative(day: IsoDay, now: number = Date.now()) {
   return relativeDays(distance)
 }
 
-/** Minute-precision local timestamp `yyyy-MM-ddTHH:mm` used for the `saved` URL param. */
+/** Minute-precision local timestamp `yyyy-MM-ddTHH:mm` (Europe/Berlin), from the server's `updatedAt`. */
 export type SavedStamp = string
-
-const SAVED_STAMP_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
-
-export function isSavedStamp(value: string): value is SavedStamp {
-  return SAVED_STAMP_PATTERN.test(value) && isIsoDay(value.slice(0, 10))
-}
 
 export function savedStampNow(now: number = Date.now()): SavedStamp {
   return format(new TZDate(now, APP_TIME_ZONE), "yyyy-MM-dd'T'HH:mm", dateOptions)
@@ -187,20 +181,6 @@ export function formatSavedShort(stamp: SavedStamp, now: number = Date.now()) {
 /** "Di, 06.10.2026, 14:32 Uhr" */
 export function formatSavedFull(stamp: SavedStamp) {
   return `${format(parseSavedStamp(stamp), 'EEEEEE, dd.MM.yyyy, HH:mm', dateOptions)} Uhr`
-}
-
-/** "vor 3 Wochen", "vor 5 Minuten", "gerade eben" */
-export function formatSavedRelative(stamp: SavedStamp, now: number = Date.now()) {
-  const saved = parseSavedStamp(stamp).getTime()
-  if (Math.abs(now - saved) < 60_000) return 'gerade eben'
-  const minutes = Math.round((saved - now) / 60_000)
-  if (Math.abs(minutes) < 60) return relative(minutes, 'minute')
-  if (Math.abs(minutes) < 24 * 60) return relative(Math.trunc(minutes / 60), 'hour')
-  return relativeDays(-savedAgeInDays(stamp, now))
-}
-
-export function savedAgeInDays(stamp: SavedStamp, now: number = Date.now()) {
-  return daysBetween(stamp.slice(0, 10), today(now))
 }
 
 export const MONTH_NAMES = Array.from({ length: 12 }, (_, month) =>

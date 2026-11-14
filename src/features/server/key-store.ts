@@ -3,7 +3,7 @@ import { parseKeyFromHash, removeKeyFromHash } from './key-hash'
 
 const STORAGE_KEY = 'vacation-planner:key:v1'
 
-/** `revoked`: the server rejected the stored key; shown once as a notice, never persisted. */
+/** `revoked`: the server rejected the stored key; shown on the no-key screen, never persisted. */
 type KeyState = { key: string | null; revoked: boolean }
 
 function readStoredKey(): string | null {
@@ -76,10 +76,6 @@ function getSnapshot() {
 export function clearKey(options: { revoked?: boolean } = {}) {
   writeStoredKey(null)
   setState({ key: null, revoked: options.revoked === true })
-}
-
-export function dismissRevokedNotice() {
-  if (state.revoked) setState({ ...state, revoked: false })
 }
 
 export function useKeyState() {

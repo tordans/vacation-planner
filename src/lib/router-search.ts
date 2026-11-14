@@ -19,8 +19,8 @@ const makeSearchPretty = (searchString: string) =>
     .replaceAll('%7D', '}')
     .replaceAll('%2F', '/')
 
-/** Readable params first, the long compressed plan last. */
-const PARAM_ORDER = ['year', 'from', 'to', 'others', 'saved', 'plan']
+/** Fixed order, so shared view links look the same whatever was clicked first. */
+const PARAM_ORDER = ['year', 'from', 'to', 'others']
 
 function orderParams(search: Record<string, unknown>) {
   const ordered: Record<string, unknown> = {}

@@ -1,33 +1,31 @@
-import {
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  Cog6ToothIcon,
-  LinkIcon,
-} from '@heroicons/react/20/solid'
+import { ChevronLeftIcon, ChevronRightIcon, Cog6ToothIcon } from '@heroicons/react/20/solid'
 import { useState } from 'react'
 import { INFO_TOPICS, InfoFooter, showInfoTopic } from '@/components/InfoFooter'
 import { buttonClass } from '@/components/ui/classes'
-import { SavedDisplay } from '@/components/ui/DateDisplay'
 import { DetailGantt } from '@/features/detail-gantt/DetailGantt'
 import { MAX_RANGE_DAYS } from '@/features/detail-gantt/gantt-scale'
 import { federalStateByCode } from '@/features/holidays/federal-states'
 import { useCalendar } from '@/features/holidays/use-calendar'
 import { useHouseholdHolidays } from '@/features/holidays/use-household-holidays'
-import { readLastPlan } from '@/features/plan/last-plan'
 import { PlanProvider } from '@/features/plan/PlanProvider'
 import { usePlan, useServerControls, useView } from '@/features/plan/use-plan'
 import { AccessMenu } from '@/features/server/AccessMenu'
+import { useKeyState } from '@/features/server/key-store'
+import { NoKeyScreen } from '@/features/server/NoKeyScreen'
 import { SaveStatus } from '@/features/server/SaveStatus'
 import { ServerNotices } from '@/features/server/ServerNotices'
 import { CalendarDialog } from '@/features/settings/CalendarDialog'
 import { HouseholdsDialog } from '@/features/settings/HouseholdsDialog'
 import { SettingsDialog } from '@/features/settings/SettingsDialog'
 import { YearOverview } from '@/features/year-overview/YearOverview'
-import { addDays, daysBetween, formatSavedCompact, formatSavedFull, yearOf } from '@/lib/dates'
+import { addDays, daysBetween, formatSavedCompact, yearOf } from '@/lib/dates'
 
 export default function App() {
+  const { key, revoked } = useKeyState()
+  // No key (or the server turned it down): no planner and no requests, only the way in.
+  if (key === null) return <NoKeyScreen revoked={revoked} />
   return (
-    <PlanProvider>
+    <PlanProvider planKey={key}>
       <AppGate />
     </PlanProvider>
   )
@@ -67,14 +65,12 @@ function AppGate() {
 }
 
 function Planner() {
-  const { plan, commit, saved, hasPlan, mode, readOnly } = usePlan()
+  const { plan, commit, saved, hasPlan, readOnly } = usePlan()
   const view = useView()
   const { year } = view
-  const [lastPlan] = useState(() => (hasPlan ? null : readLastPlan()))
-  const [settingsOpen, setSettingsOpen] = useState(!readOnly && !hasPlan && lastPlan === null)
+  const [settingsOpen, setSettingsOpen] = useState(!readOnly && !hasPlan)
   const [calendarOpen, setCalendarOpen] = useState(false)
   const [householdsOpen, setHouseholdsOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
 
   // Guard against hand-edited links with absurd ranges.
   const range =
@@ -99,16 +95,6 @@ function Planner() {
   const householdHolidays = useHouseholdHolidays(plan.households, years)
   const federalState = federalStateByCode(plan.federalState)
 
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 2000)
-    } catch {
-      // Clipboard blocked: the address bar still has the link.
-    }
-  }
-
   return (
     <div className="mx-auto max-w-[96rem] space-y-6 px-4 py-6 sm:px-6">
       <title>
@@ -128,13 +114,13 @@ function Planner() {
             )}
           </h1>
           <p className="mt-0.5 text-sm text-zinc-600">
-            {mode === 'server' ? <SaveStatus /> : <SavedDisplay stamp={saved} />}
+            <SaveStatus />
             <button
               type="button"
               className="ml-2 text-sky-700 underline underline-offset-2 hover:text-sky-900 print:hidden"
               onClick={() => showInfoTopic(INFO_TOPICS.keeping)}
             >
-              {mode === 'server' ? 'Wo liegt der Plan?' : 'Wie sichere ich den Plan?'}
+              Wo liegt der Plan?
             </button>
           </p>
         </div>
@@ -167,41 +153,11 @@ function Planner() {
               {federalState.name}
             </button>
           )}
-          {mode === 'server' ? (
-            <AccessMenu />
-          ) : (
-            <>
-              <button type="button" className={buttonClass} onClick={() => void copyLink()}>
-                <LinkIcon className="size-4 text-zinc-500" />
-                {copied ? 'Link kopiert' : 'Link kopieren'}
-              </button>
-              <button
-                type="button"
-                className="text-sm text-sky-700 underline underline-offset-2 hover:text-sky-900"
-                onClick={() => showInfoTopic(INFO_TOPICS.storage)}
-              >
-                Was steckt im Link?
-              </button>
-            </>
-          )}
+          <AccessMenu />
         </div>
       </header>
 
       <ServerNotices />
-
-      {mode === 'url' && lastPlan && !hasPlan && (
-        <p className="rounded-lg bg-sky-50 px-4 py-3 text-sm text-sky-950 ring-1 ring-sky-200">
-          In diesem Browser wurde zuletzt ein Plan bearbeitet, zuletzt am{' '}
-          {formatSavedFull(lastPlan.saved)}.{' '}
-          <button
-            type="button"
-            className="font-semibold underline underline-offset-2"
-            onClick={() => view.openPlan(lastPlan)}
-          >
-            Diesen Plan öffnen
-          </button>
-        </p>
-      )}
 
       {isError && (
         <p className="flex flex-wrap items-center gap-3 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-900 ring-1 ring-red-200">

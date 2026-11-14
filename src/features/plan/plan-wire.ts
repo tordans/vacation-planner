@@ -1,7 +1,5 @@
-import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
 import {
   CARERS,
-  emptyPlan,
   PARENT_ROLES,
   wirePlanSchema,
   type Carer,
@@ -39,7 +37,7 @@ function fromWireParent(role: ParentRole, wire: WirePlan['p'][number]): Parent {
   return { role, name: wire.n ?? '', workingDays: [...new Set(wire.w)], leaveDaysByYear }
 }
 
-/** The plan in wire format: what the link compresses and what the server stores as is. */
+/** The plan in wire format: what the server stores as is. */
 export function toWire(plan: Plan): WirePlan {
   return {
     v: 1,
@@ -105,7 +103,6 @@ function fromWire(wire: WirePlan): Plan {
     },
     entries: wire.e
       .filter(([start, end]) => start <= end)
-
       .map(([start, end, kind, mask, place, note, idea], index) => ({
         id: `e${index}`,
         start,
@@ -154,42 +151,8 @@ function fromWire(wire: WirePlan): Plan {
   }
 }
 
-/** Ids are positional (`e0`, `x3`); re-number after every structural change. */
-export function withFreshIds(plan: Plan): Plan {
-  return {
-    ...plan,
-    entries: plan.entries.map((entry, index) => ({ ...entry, id: `e${index}` })),
-    personalLeave: plan.personalLeave.map((leave, index) => ({ ...leave, id: `x${index}` })),
-    households: plan.households.map((household, index) => ({
-      ...household,
-      id: `h${index}` as const,
-      absences: household.absences.map((absence, absenceIndex) => ({
-        ...absence,
-        id: `h${index}a${absenceIndex}`,
-      })),
-    })),
-  }
-}
-
-export function encodePlan(plan: Plan) {
-  return compressToEncodedURIComponent(JSON.stringify(toWire(plan)))
-}
-
 /** Wire format from the server; `null` when it is not a plan this version understands. */
 export function decodeWirePlan(data: unknown): Plan | null {
   const result = wirePlanSchema.safeParse(data)
   return result.success ? fromWire(result.data) : null
-}
-
-/** Never throws: a broken or outdated link falls back to an empty plan. */
-export function decodePlan(encoded: string | undefined): Plan {
-  if (!encoded) return emptyPlan()
-  try {
-    const json = decompressFromEncodedURIComponent(encoded)
-    if (!json) return emptyPlan()
-    const result = wirePlanSchema.safeParse(JSON.parse(json))
-    return result.success ? fromWire(result.data) : emptyPlan()
-  } catch {
-    return emptyPlan()
-  }
 }

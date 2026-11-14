@@ -22,7 +22,7 @@ type CalendarDialogProps = {
   /** Holidays as imported, before the family's corrections. */
   source: YearPeriods
   federalStateName: string
-  onCommit: (plan: Plan, history?: 'push' | 'replace') => void
+  onCommit: (plan: Plan) => void
 }
 
 const dateClass =
@@ -84,7 +84,7 @@ export function CalendarDialog({
               <p className="mt-1 text-sm text-zinc-600">
                 Ferien und Feiertage für {federalStateName} kommen von mehr-schulferien.de. Du
                 kannst sie hier korrigieren oder entfernen und eigene schulfreie Tage ergänzen. Alle
-                Änderungen werden im Link gespeichert.
+                Änderungen werden wie der Plan gemeinsam gespeichert.
               </p>
             </div>
 
@@ -98,7 +98,7 @@ export function CalendarDialog({
                 <PeriodRow
                   key={index}
                   period={day}
-                  onChange={(next) => onCommit(updateCustomDay(plan, index, next), 'replace')}
+                  onChange={(next) => onCommit(updateCustomDay(plan, index, next))}
                   action={
                     <button
                       type="button"
@@ -158,7 +158,7 @@ type ImportedSectionProps = {
   kind: 'school' | 'public'
   periods: Period[]
   plan: Plan
-  onCommit: (plan: Plan, history?: 'push' | 'replace') => void
+  onCommit: (plan: Plan) => void
 }
 
 function ImportedSection({ title, kind, periods, plan, onCommit }: ImportedSectionProps) {
@@ -196,7 +196,7 @@ function ImportedSection({ title, kind, periods, plan, onCommit }: ImportedSecti
                 merged.name === original.name &&
                 merged.start === original.start &&
                 merged.end === original.end
-              onCommit(adjustHoliday(plan, key, isOriginal ? undefined : merged), 'replace')
+              onCommit(adjustHoliday(plan, key, isOriginal ? undefined : merged))
             }}
             action={
               adjustment ? (

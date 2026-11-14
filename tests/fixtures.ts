@@ -1,5 +1,6 @@
 import { buildCalendar } from '@/features/holidays/periods'
 import { emptyPlan, type Plan } from '@/features/plan/plan-schema'
+import { decodeWirePlan, toWire } from '@/features/plan/plan-wire'
 
 /** Berlin 2027 as returned by mehr-schulferien.de (fetched 2026-10-06). */
 export const BERLIN_2027 = {
@@ -36,4 +37,9 @@ export function familyPlan(): Plan {
   plan.parents.father.leaveDaysByYear = { 2027: 24 }
   plan.parents.mother.leaveDaysByYear = { 2027: 30 }
   return plan
+}
+
+/** What the server does to a plan: wire format, JSON, and back. */
+export function viaServer(plan: Plan): Plan | null {
+  return decodeWirePlan(JSON.parse(JSON.stringify(toWire(plan))))
 }

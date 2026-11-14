@@ -5,11 +5,7 @@ import {
   formatDayRange,
   formatDayRelative,
   formatDayShort,
-  formatSavedFull,
-  formatSavedRelative,
-  savedAgeInDays,
   type IsoDay,
-  type SavedStamp,
 } from '@/lib/dates'
 import { Tooltip } from './tooltip'
 
@@ -61,34 +57,5 @@ export function DateRangeDisplay({ start, end, className }: DateRangeDisplayProp
         {formatDayRange(start, end)}
       </time>
     </Tooltip>
-  )
-}
-
-const STALE_AFTER_DAYS = 7
-
-/**
- * When the plan in this link was last changed. Older than a week, the age is spelled out
- * next to the timestamp: that is the old-bookmark case this display exists for.
- */
-export function SavedDisplay({ stamp }: { stamp: SavedStamp | undefined }) {
-  const now = useNow()
-  if (!stamp) {
-    return <span className="text-zinc-500">Noch nicht gespeichert</span>
-  }
-  const relative = formatSavedRelative(stamp, now)
-  const isStale = savedAgeInDays(stamp, now) >= STALE_AFTER_DAYS
-  return (
-    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-      <Tooltip content={`Zuletzt geändert ${relative}`}>
-        <time dateTime={stamp} tabIndex={0} className={cn(hintClass, 'tabular-nums')}>
-          Stand: {formatSavedFull(stamp)}
-        </time>
-      </Tooltip>
-      {isStale && (
-        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
-          {relative} geändert
-        </span>
-      )}
-    </span>
   )
 }

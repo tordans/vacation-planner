@@ -46,7 +46,7 @@ type GanttEditorProps = {
   plan: Plan
   calendar: Calendar
   selection: Selection | null
-  onCommit: (plan: Plan, history?: 'push' | 'replace') => void
+  onCommit: (plan: Plan) => void
   onDeselect: () => void
   onSelect: (selection: Selection) => void
   /** View role: show the details of the selected bar, but nothing to change. */
@@ -256,7 +256,7 @@ function EntryEditor({ plan, calendar, entry, onCommit, onDeselect, onSelect }: 
             value={entry.place}
             placeholder={entry.kind === 'away' ? 'z. B. Dänemark' : 'Zuhause'}
             maxLength={60}
-            onCommit={(place) => onCommit(updateEntry(plan, entry.id, { place }), 'replace')}
+            onCommit={(place) => onCommit(updateEntry(plan, entry.id, { place }))}
           />
         </label>
         <label className="block text-sm font-medium sm:col-span-2 lg:col-span-4">
@@ -265,7 +265,7 @@ function EntryEditor({ plan, calendar, entry, onCommit, onDeselect, onSelect }: 
             className="mt-1"
             value={entry.note}
             maxLength={120}
-            onCommit={(note) => onCommit(updateEntry(plan, entry.id, { note }), 'replace')}
+            onCommit={(note) => onCommit(updateEntry(plan, entry.id, { note }))}
           />
         </label>
       </div>
@@ -401,9 +401,7 @@ function LeaveEditor({ plan, calendar, leave, onCommit, onDeselect }: LeaveEdito
             className="mt-1"
             value={leave.place}
             maxLength={60}
-            onCommit={(place) =>
-              onCommit(updatePersonalLeave(plan, leave.id, { place }), 'replace')
-            }
+            onCommit={(place) => onCommit(updatePersonalLeave(plan, leave.id, { place }))}
           />
         </label>
         <label className="block text-sm font-medium sm:col-span-2 lg:col-span-4">
@@ -412,7 +410,7 @@ function LeaveEditor({ plan, calendar, leave, onCommit, onDeselect }: LeaveEdito
             className="mt-1"
             value={leave.note}
             maxLength={120}
-            onCommit={(note) => onCommit(updatePersonalLeave(plan, leave.id, { note }), 'replace')}
+            onCommit={(note) => onCommit(updatePersonalLeave(plan, leave.id, { note }))}
           />
         </label>
       </div>
@@ -470,7 +468,7 @@ function AbsenceEditor({ plan, household, absence, onCommit, onDeselect }: Absen
             value={absence.place}
             placeholder="z. B. Ferienwohnung"
             maxLength={60}
-            onCommit={(place) => onCommit(updateAbsence(plan, absence.id, { place }), 'replace')}
+            onCommit={(place) => onCommit(updateAbsence(plan, absence.id, { place }))}
           />
         </label>
         <label className="block text-sm font-medium sm:col-span-2 lg:col-span-4">
@@ -479,7 +477,7 @@ function AbsenceEditor({ plan, household, absence, onCommit, onDeselect }: Absen
             className="mt-1"
             value={absence.note}
             maxLength={120}
-            onCommit={(note) => onCommit(updateAbsence(plan, absence.id, { note }), 'replace')}
+            onCommit={(note) => onCommit(updateAbsence(plan, absence.id, { note }))}
           />
         </label>
       </div>

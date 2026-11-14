@@ -12,7 +12,23 @@ import type {
   Plan,
 } from './plan-schema'
 import { fixedEntries } from './plan-schema'
-import { withFreshIds } from './plan-url'
+
+/** Ids are positional (`e0`, `x3`); re-number after every structural change. */
+function withFreshIds(plan: Plan): Plan {
+  return {
+    ...plan,
+    entries: plan.entries.map((entry, index) => ({ ...entry, id: `e${index}` })),
+    personalLeave: plan.personalLeave.map((leave, index) => ({ ...leave, id: `x${index}` })),
+    households: plan.households.map((household, index) => ({
+      ...household,
+      id: `h${index}` as const,
+      absences: household.absences.map((absence, absenceIndex) => ({
+        ...absence,
+        id: `h${index}a${absenceIndex}`,
+      })),
+    })),
+  }
+}
 
 export type DayRange = { start: IsoDay; end: IsoDay }
 
