@@ -46,6 +46,13 @@ function PrivacyDialog({ open, onClose }: { open: boolean; onClose: () => void }
             selbst speichert der Server nur als Fingerabdruck (SHA-256).
           </p>
         </Section>
+        <Section title="Abstimmungen">
+          <p>
+            Abstimmungen gehen nie an unseren Server. Ihre Einträge stehen nur im Link, im Teil nach
+            dem #, und den sendet dein Browser an keinen Server. Wer den Link hat, sieht alles
+            darin.
+          </p>
+        </Section>
         <Section title="Was sonst anfällt">
           <p>
             Falsche Einladungswörter werden kurz gezählt (anonymisierter IP-Fingerabdruck, höchstens

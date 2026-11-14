@@ -6,6 +6,8 @@ import {
   redirect,
 } from '@tanstack/react-router'
 import App from '@/App'
+import { PollPage } from '@/features/poll/PollPage'
+import { PollStartPage } from '@/features/poll/PollStartPage'
 import { routerSearch } from '@/lib/router-search'
 import { appSearchSchema } from '@/lib/search'
 
@@ -37,7 +39,20 @@ const indexRoute = createRoute({
   component: App,
 })
 
-const routeTree = rootRoute.addChildren([indexRoute])
+// The poll lives in its link and needs no key, so these routes sit outside the key gate of `App`.
+const pollStartRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/abstimmung',
+  component: PollStartPage,
+})
+
+const pollRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/abstimmung/$name',
+  component: PollPage,
+})
+
+const routeTree = rootRoute.addChildren([indexRoute, pollStartRoute, pollRoute])
 
 export const router = createRouter({
   routeTree,

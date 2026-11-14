@@ -11,6 +11,7 @@ import { useCalendar } from '@/features/holidays/use-calendar'
 import { useHouseholdHolidays } from '@/features/holidays/use-household-holidays'
 import { PlanProvider } from '@/features/plan/PlanProvider'
 import { usePlan, useServerControls, useView } from '@/features/plan/use-plan'
+import { StartPollButton } from '@/features/poll/StartPollDialog'
 import { AccessMenu } from '@/features/server/AccessMenu'
 import { useKeyState } from '@/features/server/key-store'
 import { NoKeyScreen } from '@/features/server/NoKeyScreen'
@@ -163,6 +164,7 @@ function Planner() {
               {federalState.name}
             </button>
           )}
+          <StartPollButton plan={plan} year={year} schoolHolidays={calendar.schoolHolidays} />
           <AccessMenu />
         </div>
       </header>

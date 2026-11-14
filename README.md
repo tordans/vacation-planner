@@ -23,6 +23,11 @@ family is, who takes care of the children, and how many leave days each parent h
   when they are away, at no cost to anyone's leave.
 - **Ideas**: periods that are not decided yet, which may overlap, until "Fest einplanen" makes one
   fixed.
+- **Poll** (`/abstimmung`): a standalone page to find a common time window with other families,
+  with a chart of everyone's ranges and highlighted "Chancen". No plan, key or server needed; the
+  poll lives in the link fragment (`#d=…`), which is never sent to any server. From a plan you can
+  start a poll ("Abstimmung" in the header) and take its families (as households) and Chancen (as
+  ideas) back in.
 - **Holidays** come from [mehr-schulferien.de](https://www.mehr-schulferien.de) for the chosen
   federal state. "Anpassen" corrects single dates and adds your own school-free days.
 
@@ -40,6 +45,10 @@ family is, who takes care of the children, and how many leave days each parent h
 4. **Renew a link.** In the menu "Gemeinsamer Plan", "Ansicht-Link erneuern" and
    "Bearbeiten-Link erneuern" issue a new link and invalidate the old one at once, on every device.
    Do this when a link was lost or went to someone who should not have it.
+5. **Or just run a poll.** On the start screen choose "Abstimmung starten", name the poll, add
+   families (load their school holidays or enter ranges by hand) and send the link. The others add
+   their times and send the new link back. Everything is stored in the link only (after the `#`,
+   so no server ever sees it), and every change gives a new link.
 
 Several people can edit at the same time; if two saves collide, the later one is offered the chance
 to overwrite ("Meine Änderung trotzdem speichern"). Without a connection the change stays on screen

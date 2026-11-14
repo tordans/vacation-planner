@@ -60,6 +60,21 @@ Vornamen oder Kürzeln aus.
 Pro Plan gibt es zwei Links, aber keine Nutzerkonten und keine Zuordnung zu Personen. Die Server-
 Datenbank enthält keine E-Mail-Adressen und keine Klar-IP-Adressen.
 
+## Abstimmungen
+
+Die Abstimmung unter `/abstimmung/…` ist unabhängig von Plänen. Ihre Einträge (Name der Abstimmung,
+Namen der Familien, Zeiträume, Bundesland) stehen komprimiert im Fragment der Adresse (`#d=…`) und
+**nur dort**. Sie gehen nie an unseren Server: Der Teil nach `#` wird von Browsern an keinen Server
+gesendet und steht deshalb auch in keinem Zugriffsprotokoll. Die App speichert sie weder auf dem
+Server noch im Browser. Wer den Link hat, sieht alles darin, und jede Änderung erzeugt einen neuen
+Link. Lädt jemand Ferien oder Feiertage, ruft der Browser wie im Plan mehr-schulferien.de auf.
+
+Wer auf demselben Gerät einen Plan geöffnet hat, kann Einträge einer Abstimmung in diesen Plan
+übernehmen, und aus einem Plan lässt sich eine Abstimmung mit den eigenen Schulferien und Ideen
+starten. Dabei werden nur diese Einträge in den Link kopiert (nicht der Plan), und der Plan wird
+nur geladen, wenn man die Abstimmung auf einem Gerät mit gespeichertem Schlüssel öffnet. Trag auch
+in eine Abstimmung nur ein, was du über einen Link weitergeben würdest.
+
 ## Wer kann was?
 
 |                                                      | Link zum Bearbeiten | Link zum Ansehen |

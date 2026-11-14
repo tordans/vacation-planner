@@ -1,4 +1,6 @@
 import { KeyIcon } from '@heroicons/react/24/outline'
+import { Link } from '@tanstack/react-router'
+import { buttonClass } from '@/components/ui/classes'
 import { Wordmark } from '@/components/Wordmark'
 import { PrivacyButton } from '@/features/privacy/PrivacyDialog'
 import { PRODUCT_CLAIM, PRODUCT_TITLE } from '@/lib/brand'
@@ -30,6 +32,15 @@ export function NoKeyScreen({ revoked }: { revoked: boolean }) {
         </p>
       )}
       <CreatePlan />
+      <section className="space-y-3 rounded-xl bg-white p-5 text-left shadow-xs ring-1 ring-zinc-200">
+        <h2 className="text-base font-semibold">Nur eine Abstimmung?</h2>
+        <p className="text-sm/6 text-zinc-700">
+          Zeiträume mit anderen abgleichen, ohne Plan und ohne Einladungswort.
+        </p>
+        <Link to="/abstimmung" className={buttonClass}>
+          Abstimmung starten
+        </Link>
+      </section>
       <p className="text-center text-sm text-zinc-600">
         <PrivacyButton />
       </p>

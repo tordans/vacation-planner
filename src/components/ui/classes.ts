@@ -8,3 +8,7 @@ export const primaryButtonClass =
 
 /** Inline text links. */
 export const linkClass = 'font-medium text-sky-700 underline underline-offset-2 hover:text-sky-900'
+
+/** Text, date and select fields. */
+export const inputClass =
+  'block w-full rounded-md border-zinc-300 text-sm shadow-xs focus:border-sky-600 focus:ring-sky-600'
