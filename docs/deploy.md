@@ -124,7 +124,7 @@ exist stay as they are.
    `config/config.php` generated from secrets, with the commit; `logs/.htaccess`). `index.html` is
    held back in `deploy-index/`. The upload needs no Composer.
 3. **Upload pass 1** (`SamKirkland/FTP-Deploy-Action`, pinned to the commit of v4.4.0, `protocol:
-ftps`, port 21, `security: strict`, incremental sync, never a clean slate): everything except
+   ftps`, port 21, `security: strict`, incremental sync, never a clean slate): everything except
    `index.html`, so hashed assets and the new API code are in place first.
 4. **Upload pass 2**: only `index.html` (own sync state file), which switches visitors to the new
    build. The sync state files sit in the FTP root (`vacation.ingsparks.de/`), outside the document root.
